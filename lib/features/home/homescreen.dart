@@ -206,22 +206,22 @@ class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
 
             // ✅ Filtered Reciter List
             Expanded(
-              child: controller.filteredReciters.isEmpty
+              child: controller.isLoading.value
                   ? const Center(
-                child: Text(
-                  'No reciter found',
-                  style: TextStyle(
-                      color: Colors.grey, fontSize: 18),
-                ),
+                child: CircularProgressIndicator(color: Color(0xFF007BFF)),
+              )
+                  : controller.filteredReciters.isEmpty
+                  ? const Center(
+                child: Text('No reciter found',
+                    style: TextStyle(color: Colors.grey, fontSize: 18)),
               )
                   : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(
-                    20, 10, 20, 120),
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 120),
                 itemCount: controller.filteredReciters.length,
                 itemBuilder: (context, index) {
                   return _buildReciterCard(
                     controller,
-                    controller.filteredReciters[index],
+                    controller.filteredReciters[index].name, // ✅
                     index,
                     context,
                   );
@@ -312,15 +312,12 @@ class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding:
-        const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
+        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
         decoration: BoxDecoration(
           color: const Color(0xFF1A1A1A),
           borderRadius: BorderRadius.circular(15),
           border: Border.all(
-            color: isSelected
-                ? const Color(0xFF007BFF)
-                : Colors.transparent,
+            color: isSelected ? const Color(0xFF007BFF) : Colors.transparent,
             width: 2.0,
           ),
         ),
@@ -328,8 +325,7 @@ class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
           children: [
             Text(
               name,
-              style:
-              const TextStyle(color: Colors.white, fontSize: 20),
+              style: const TextStyle(color: Colors.white, fontSize: 20),
             ),
           ],
         ),

@@ -1,6 +1,8 @@
 import 'package:get/get.dart';
 import '../../../core/local_storage.dart';
 import '../../player/player_screen.dart';
+import '../../reciter_model/reciter_model.dart';
+import '../../reciter_model/reciter_respository.dart';
 
 class HomeController extends GetxController {
 
@@ -8,24 +10,27 @@ class HomeController extends GetxController {
   var selectedNavIndex = 0.obs;
   var searchQuery = ''.obs;
 
-  // ✅ Last played surah
+  // ✅ Last played
   var lastPlayedSurah = ''.obs;
   var lastPlayedReciter = ''.obs;
 
-  final RxList<String> reciters = [
-    'Abdelaziz sheim',
-    'Abdelbari Al- Toubayti',
-    'Abdul Aziz Al-Ahmad',
-    'Mishary Rashid Alafasy',
-    'Saad El Ghamidi',
-    'Abdul Rahman Al-Sudais',
-    'Maher Al-Muaiqly',
-  ].obs;
+  // ✅ API reciters
+  var reciters = <ReciterModel>[].obs;
+  var isLoading = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    _loadLastPlayed(); // ✅ App open হলে last played load করবে
+    _loadLastPlayed();
+    fetchReciters(); // ✅ API থেকে load
+  }
+
+  // ✅ API call
+  Future<void> fetchReciters({String search = ''}) async {
+    isLoading.value = true;
+    final result = await ReciterRepository.getReciters(search: search);
+    reciters.value = result;
+    isLoading.value = false;
   }
 
   // ✅ LocalStorage থেকে load
@@ -34,26 +39,36 @@ class HomeController extends GetxController {
     lastPlayedReciter.value = LocalStorage.getLastPlayedReciter() ?? '';
   }
 
-  List<String> get filteredReciters {
-    if (searchQuery.value.isEmpty) return reciters;
-    return reciters
-        .where((name) =>
-        name.toLowerCase().contains(searchQuery.value.toLowerCase()))
-        .toList();
+  void reloadLastPlayed() {
+    lastPlayedSurah.value = LocalStorage.getLastPlayed() ?? '';
+    lastPlayedReciter.value = LocalStorage.getLastPlayedReciter() ?? '';
   }
 
-  void onSearchChanged(String value) => searchQuery.value = value;
-  void clearSearch() => searchQuery.value = '';
+  // ✅ Search — API call with query
+  void onSearchChanged(String value) {
+    searchQuery.value = value;
+    fetchReciters(search: value); // ✅ API এ search পাঠাও
+  }
+
+  void clearSearch() {
+    searchQuery.value = '';
+    fetchReciters(); // ✅ সব reciters আবার load
+  }
+
+  // ✅ Filtered list — এখন API থেকে আসছে তাই শুধু reciters return
+  List<ReciterModel> get filteredReciters => reciters;
+
   void selectReciter(int index) => selectedReciterIndex.value = index;
   void changeNavIndex(int index) => selectedNavIndex.value = index;
 
-  // ✅ Continue Listening play button
-  void playLastPlayed() {
+  // ✅ Continue Listening play
+  void playLastPlayed() async {
     if (lastPlayedSurah.value.isNotEmpty) {
-      Get.to(() => PlayerScreen(
+      await Get.to(() => PlayerScreen(
         surahName: lastPlayedSurah.value,
-        reciterName: lastPlayedReciter.value, // ✅ add করো
+        reciterName: lastPlayedReciter.value,
       ));
+      reloadLastPlayed(); // ✅ ফিরে আসলে reload
     }
   }
 }

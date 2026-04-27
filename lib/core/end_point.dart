@@ -12,6 +12,7 @@ class EndPoint {
   static const String login = '/auth/login';
   static const String register = '/auth/register';
   static const String logout = '/auth/logout';
+  static const String reciters = '/quran/reciters';
 
   // ✅ Favorites (যদি server side লাগে)
   static const String favorites = '/favorites';

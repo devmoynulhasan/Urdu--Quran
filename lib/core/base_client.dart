@@ -55,13 +55,21 @@ class BaseClient {
         Map<String, dynamic>? queryParams,
       }) async {
     try {
+      print('📡 GET: ${dio.options.baseUrl}$endpoint');  // ✅ যোগ করো
+      print('📡 Params: $queryParams');                  // ✅ যোগ করো
       final response = await dio.get(
         endpoint,
         queryParameters: queryParams,
       );
+      print('📡 Status: ${response.statusCode}');        // ✅ যোগ করো
       return response;
     } on DioException catch (e) {
+      print('❌ DioError type: ${e.type}');              // ✅ যোগ করো
+      print('❌ DioError message: ${e.message}');        // ✅ যোগ করো
       _handleError(e);
+      return null;
+    } catch (e) {
+      print('❌ Unknown error: $e');                     // ✅ যোগ করো
       return null;
     }
   }
