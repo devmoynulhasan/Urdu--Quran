@@ -135,8 +135,8 @@ class ReciterDetailScreen extends StatelessWidget {  // ✅ StatelessWidget
                           onTap: () {
                             controller.togglePlay(index);
                             Get.to(() => PlayerScreen(
-                              surahName:
-                              '${surah['number']}. ${surah['name']}',
+                              surahName: '${surah['number']}. ${surah['name']}',
+                              reciterName: reciterName, // ✅ এইটা add করো
                             ));
                           },
                           child: Container(

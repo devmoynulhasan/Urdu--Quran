@@ -1,4 +1,6 @@
 import 'package:get/get.dart';
+import '../../../core/local_storage.dart';
+import '../../player/player_screen.dart';
 
 class HomeController extends GetxController {
 
@@ -6,12 +8,13 @@ class HomeController extends GetxController {
   var selectedNavIndex = 0.obs;
   var searchQuery = ''.obs;
 
-  final searchController = ''.obs; // search text track
+  // ✅ Last played surah
+  var lastPlayedSurah = ''.obs;
+  var lastPlayedReciter = ''.obs;
 
   final RxList<String> reciters = [
     'Abdelaziz sheim',
     'Abdelbari Al- Toubayti',
-    'Abdelaziz sheim',
     'Abdul Aziz Al-Ahmad',
     'Mishary Rashid Alafasy',
     'Saad El Ghamidi',
@@ -19,7 +22,18 @@ class HomeController extends GetxController {
     'Maher Al-Muaiqly',
   ].obs;
 
-  // ✅ Filtered list — search query অনুযায়ী
+  @override
+  void onInit() {
+    super.onInit();
+    _loadLastPlayed(); // ✅ App open হলে last played load করবে
+  }
+
+  // ✅ LocalStorage থেকে load
+  void _loadLastPlayed() {
+    lastPlayedSurah.value = LocalStorage.getLastPlayed() ?? '';
+    lastPlayedReciter.value = LocalStorage.getLastPlayedReciter() ?? '';
+  }
+
   List<String> get filteredReciters {
     if (searchQuery.value.isEmpty) return reciters;
     return reciters
@@ -28,19 +42,18 @@ class HomeController extends GetxController {
         .toList();
   }
 
-  void onSearchChanged(String value) {
-    searchQuery.value = value;
-  }
+  void onSearchChanged(String value) => searchQuery.value = value;
+  void clearSearch() => searchQuery.value = '';
+  void selectReciter(int index) => selectedReciterIndex.value = index;
+  void changeNavIndex(int index) => selectedNavIndex.value = index;
 
-  void clearSearch() {
-    searchQuery.value = '';
-  }
-
-  void selectReciter(int index) {
-    selectedReciterIndex.value = index;
-  }
-
-  void changeNavIndex(int index) {
-    selectedNavIndex.value = index;
+  // ✅ Continue Listening play button
+  void playLastPlayed() {
+    if (lastPlayedSurah.value.isNotEmpty) {
+      Get.to(() => PlayerScreen(
+        surahName: lastPlayedSurah.value,
+        reciterName: lastPlayedReciter.value, // ✅ add করো
+      ));
+    }
   }
 }

@@ -1,6 +1,8 @@
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 
+import '../../../core/local_storage.dart';
+
 class PlayerController extends GetxController {
 
   final AudioPlayer player = AudioPlayer();
@@ -22,11 +24,14 @@ class PlayerController extends GetxController {
     '60 Minutes',
   ];
 
-  Future<void> initAudio(String surahName) async {
+  Future<void> initAudio(String surahName, String reciterName) async {
     final surahNumber = surahName.split('.').first.trim();
     await player.setUrl(
       'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$surahNumber.mp3',
     );
+
+    // ✅ Play শুরু হলে LocalStorage এ save করো
+    await LocalStorage.saveLastPlayed(surahName, reciterName);
 
     player.positionStream.listen((pos) => position.value = pos);
     player.durationStream.listen((dur) => duration.value = dur ?? Duration.zero);

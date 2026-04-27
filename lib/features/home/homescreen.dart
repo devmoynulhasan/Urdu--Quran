@@ -103,34 +103,73 @@ class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
                       ),
                     ),
                     const SizedBox(height: 15),
-                    Container(
+
+                    // ✅ Last played surah আছে কিনা check
+                    Obx(() => controller.lastPlayedSurah.value.isEmpty
+
+                    // ❌ কোনো surah play হয়নি
+                        ? Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1A1A1A),
                         borderRadius: BorderRadius.circular(15),
                       ),
-                      child: Row(
+                      child: const Row(
                         children: [
-                          const Text(
-                            '1. Al-Baqarah',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 20),
-                          ),
-                          const Spacer(),
-                          const Icon(Icons.download_outlined,
-                              color: Colors.grey, size: 28),
-                          const SizedBox(width: 15),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF007BFF),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.play_arrow,
-                                color: Colors.white, size: 28),
+                          Icon(Icons.music_off, color: Colors.grey, size: 24),
+                          SizedBox(width: 12),
+                          Text(
+                            'No surah played yet',
+                            style: TextStyle(color: Colors.grey, fontSize: 18),
                           ),
                         ],
                       ),
+                    )
+
+                    // ✅ Last played surah দেখাবে
+                        : GestureDetector(
+                      onTap: controller.playLastPlayed, // ✅ click করলে player খুলবে
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A1A1A),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Row(
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  controller.lastPlayedSurah.value, // ✅ Surah name
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 20),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  controller.lastPlayedReciter.value, // ✅ Reciter name
+                                  style: const TextStyle(
+                                      color: Colors.grey, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.download_outlined,
+                                color: Colors.grey, size: 28),
+                            const SizedBox(width: 15),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF007BFF),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.play_arrow,
+                                  color: Colors.white, size: 28),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     ),
                     const SizedBox(height: 35),
                   ],

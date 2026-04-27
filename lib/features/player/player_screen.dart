@@ -5,15 +5,16 @@ import '../controller/playercontroller/playerscreen_controller.dart';
 
 class PlayerScreen extends StatelessWidget {  // ✅ StatelessWidget
   final String surahName;
+  final String reciterName;
 
-  const PlayerScreen({super.key, required this.surahName});
+  const PlayerScreen({super.key, required this.surahName, required this.reciterName});
 
   @override
   Widget build(BuildContext context) {
     final PlayerController controller = Get.put(PlayerController());
 
     // ✅ Audio init
-    controller.initAudio(surahName);
+    controller.initAudio(surahName, reciterName);
 
     return Obx(() => Scaffold(
       backgroundColor: Colors.black,
