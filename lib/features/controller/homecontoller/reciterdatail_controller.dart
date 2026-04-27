@@ -1,33 +1,37 @@
 import 'package:get/get.dart';
+import '../../sura_model/sura_model.dart';
+import '../../sura_model/sura_repository.dart';
 
 class ReciterDetailController extends GetxController {
 
   var playingIndex = RxnInt();
-
-  final RxList<Map<String, String>> surahs = [
-    {'number': '1', 'name': 'Al-Fatihah'},
-    {'number': '2', 'name': 'Al-Baqarah'},
-    {'number': '3', 'name': 'Al-Imran'},
-    {'number': '4', 'name': 'An-Nisa'},
-    {'number': '5', 'name': 'Al-Maidah'},
-    {'number': '6', 'name': 'Al-Anam'},
-    {'number': '7', 'name': 'Al-Araf'},
-    {'number': '8', 'name': 'Al-Anfal'},
-  ].obs;
-
+  var suras = <SuraModel>[].obs;
+  var isLoading = false.obs;
   var searchQuery = ''.obs;
 
+  // ✅ API থেকে suras load
+  Future<void> fetchSuras({required String reciterId, String search = ''}) async {
+    isLoading.value = true;
+    final result = await SuraRepository.getSuras(
+      reciterId: reciterId,
+      search: search,
+    );
+    suras.value = result;
+    isLoading.value = false;
+  }
+
   // ✅ Search filter
-  List<Map<String, String>> get filteredSurahs {
-    if (searchQuery.value.isEmpty) return surahs;
-    return surahs
+  List<SuraModel> get filteredSuras {
+    if (searchQuery.value.isEmpty) return suras;
+    return suras
         .where((s) =>
-        s['name']!.toLowerCase().contains(searchQuery.value.toLowerCase()))
+        s.title.toLowerCase().contains(searchQuery.value.toLowerCase()))
         .toList();
   }
 
-  void onSearchChanged(String value) {
+  void onSearchChanged(String value, String reciterId) {
     searchQuery.value = value;
+    fetchSuras(reciterId: reciterId, search: value);
   }
 
   void togglePlay(int index) {

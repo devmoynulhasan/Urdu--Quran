@@ -4,7 +4,7 @@ class AppConst {
   static const String appVersion = '1.0.0';
 
   // ✅ API Base
-  static const String baseUrl = 'http://13.233.165.158:5000/api/v1';
+  static const String baseUrl = 'http://15.206.6.70:5000/api/v1';
   static const String audioBaseUrl = 'https://cdn.islamic.network/quran/audio/128';
 
   // ✅ Default Reciter

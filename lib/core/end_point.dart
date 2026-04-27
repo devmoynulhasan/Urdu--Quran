@@ -13,7 +13,7 @@ class EndPoint {
   static const String register = '/auth/register';
   static const String logout = '/auth/logout';
   static const String reciters = '/quran/reciters';
-
+  static const String suras = '/quran/suras';
   // ✅ Favorites (যদি server side লাগে)
   static const String favorites = '/favorites';
   static String deleteFavorite(int id) => '/favorites/$id';

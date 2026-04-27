@@ -308,7 +308,10 @@ class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
     return GestureDetector(
       onTap: () {
         controller.selectReciter(index);
-        Get.to(() => ReciterDetailScreen(reciterName: name)); // ✅ GetX navigation
+        Get.to(() => ReciterDetailScreen(
+          reciterName: name,
+          reciterId: controller.filteredReciters[index].id, // ✅
+        ));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
