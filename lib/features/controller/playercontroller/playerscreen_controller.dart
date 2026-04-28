@@ -1,6 +1,5 @@
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
-
 import '../../../core/local_storage.dart';
 
 class PlayerController extends GetxController {
@@ -12,6 +11,7 @@ class PlayerController extends GetxController {
   var position = Duration.zero.obs;
   var currentSpeed = 'x1'.obs;
   var selectedTimer = 'Never'.obs;
+  var isLoading = false.obs;
 
   final List<String> speeds = ['x 0.7', 'Normal', 'x 1.5', 'x 2'];
   final List<String> timerOptions = [
@@ -24,18 +24,26 @@ class PlayerController extends GetxController {
     '60 Minutes',
   ];
 
-  Future<void> initAudio(String surahName, String reciterName) async {
-    final surahNumber = surahName.split('.').first.trim();
-    await player.setUrl(
-      'https://cdn.islamic.network/quran/audio/128/ar.alafasy/$surahNumber.mp3',
-    );
+  // ✅ audioUrl দিয়ে init
+  Future<void> initAudio(
+      String audioUrl, String surahName, String reciterName) async {
+    try {
+      isLoading.value = true;
+      await player.setUrl(audioUrl);
 
-    // ✅ Play শুরু হলে LocalStorage এ save করো
-    await LocalStorage.saveLastPlayed(surahName, reciterName);
+      // ✅ audioUrl সহ save
+      await LocalStorage.saveLastPlayed(surahName, reciterName, audioUrl);
 
-    player.positionStream.listen((pos) => position.value = pos);
-    player.durationStream.listen((dur) => duration.value = dur ?? Duration.zero);
-    player.playingStream.listen((playing) => isPlaying.value = playing);
+      player.positionStream.listen((pos) => position.value = pos);
+      player.durationStream.listen((dur) => duration.value = dur ?? Duration.zero);
+      player.playingStream.listen((playing) => isPlaying.value = playing);
+
+      isLoading.value = false;
+      player.play();
+    } catch (e) {
+      isLoading.value = false;
+      print('❌ Audio Error: $e');
+    }
   }
 
   void togglePlay() {
@@ -66,7 +74,6 @@ class PlayerController extends GetxController {
     selectedTimer.value = timer;
   }
 
-  // ✅ Duration format helper
   String formatDuration(Duration d) {
     final hours = d.inHours.toString().padLeft(2, '0');
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');

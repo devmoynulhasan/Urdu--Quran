@@ -38,15 +38,17 @@ class LocalStorage {
       getFavorites().contains(surahName);
 
   // ✅ Last Played — surahName + reciterName একসাথে save
+// ✅ audioUrl সহ save
   static Future<void> saveLastPlayed(
-      String surahName, String reciterName) async {
+      String surahName, String reciterName, String audioUrl) async {
     await _box.write('last_played', surahName);
-    await _box.write('last_played_reciter', reciterName); // ✅ নতুন
+    await _box.write('last_played_reciter', reciterName);
+    await _box.write('last_played_audio_url', audioUrl); // ✅ নতুন
   }
 
   static String? getLastPlayed() => _box.read('last_played');
-  static String? getLastPlayedReciter() => _box.read('last_played_reciter'); // ✅ নতুন
-
+  static String? getLastPlayedReciter() => _box.read('last_played_reciter');
+  static String? getLastPlayedAudioUrl() => _box.read('last_played_audio_url'); // ✅ নতুন
   // ✅ Selected Reciter
   static Future<void> saveSelectedReciter(String reciter) async =>
       await _box.write('selected_reciter', reciter);

@@ -3,19 +3,45 @@ import 'package:get/get.dart';
 import 'package:urdu_quran/resource/app_images/app_imaeg.dart';
 import '../controller/playercontroller/playerscreen_controller.dart';
 
-class PlayerScreen extends StatelessWidget {  // ✅ StatelessWidget
+class PlayerScreen extends StatefulWidget {
   final String surahName;
   final String reciterName;
+  final String audioUrl; // ✅ S3 URL
 
-  const PlayerScreen({super.key, required this.surahName, required this.reciterName});
+  const PlayerScreen({
+    super.key,
+    required this.surahName,
+    required this.reciterName,
+    required this.audioUrl,
+  });
+
+  @override
+  State<PlayerScreen> createState() => _PlayerScreenState();
+}
+
+class _PlayerScreenState extends State<PlayerScreen> {
+  late PlayerController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ initState এ safe init
+    controller = Get.put(PlayerController());
+    controller.initAudio(
+      widget.audioUrl,
+      widget.surahName,
+      widget.reciterName,
+    );
+  }
+
+  @override
+  void dispose() {
+    Get.delete<PlayerController>();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final PlayerController controller = Get.put(PlayerController());
-
-    // ✅ Audio init
-    controller.initAudio(surahName, reciterName);
-
     return Obx(() => Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -65,7 +91,7 @@ class PlayerScreen extends StatelessWidget {  // ✅ StatelessWidget
                   child: Row(
                     children: [
                       GestureDetector(
-                        onTap: () => Get.back(), // ✅ GetX back
+                        onTap: () => Get.back(),
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -81,15 +107,25 @@ class PlayerScreen extends StatelessWidget {  // ✅ StatelessWidget
                 ),
                 const Spacer(),
 
-                // ✅ Surah Name
+                // ✅ Surah + Reciter Name
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
-                    surahName,
+                    widget.surahName,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Text(
+                    widget.reciterName,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 16,
                     ),
                   ),
                 ),
@@ -101,11 +137,11 @@ class PlayerScreen extends StatelessWidget {  // ✅ StatelessWidget
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       GestureDetector(
-                        onTap: () => _showTimerModal(controller),
+                        onTap: () => _showTimerModal(),
                         child: _buildPlayerAction(Icons.access_time),
                       ),
                       GestureDetector(
-                        onTap: () => _showSpeedModal(controller),
+                        onTap: () => _showSpeedModal(),
                         child: _buildPlayerActionText(
                             controller.currentSpeed.value),
                       ),
@@ -116,62 +152,69 @@ class PlayerScreen extends StatelessWidget {  // ✅ StatelessWidget
                 ),
                 const SizedBox(height: 40),
 
+                // ✅ Loading Indicator
+                if (controller.isLoading.value)
+                  const CircularProgressIndicator(color: Color(0xFF007BFF))
+                else
+
                 // ✅ Progress Slider
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          trackHeight: 2,
-                          thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 6),
-                          overlayShape: const RoundSliderOverlayShape(
-                              overlayRadius: 14),
-                          activeTrackColor: const Color(0xFF007BFF),
-                          inactiveTrackColor: Colors.grey.withAlpha(50),
-                          thumbColor: const Color(0xFF007BFF),
-                        ),
-                        child: Slider(
-                          value: controller.position.value.inSeconds
-                              .toDouble()
-                              .clamp(
-                            0,
-                            controller.duration.value.inSeconds.toDouble(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackHeight: 2,
+                            thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 6),
+                            overlayShape: const RoundSliderOverlayShape(
+                                overlayRadius: 14),
+                            activeTrackColor: const Color(0xFF007BFF),
+                            inactiveTrackColor: Colors.grey.withAlpha(50),
+                            thumbColor: const Color(0xFF007BFF),
                           ),
-                          max: controller.duration.value.inSeconds
-                              .toDouble() >
-                              0
-                              ? controller.duration.value.inSeconds.toDouble()
-                              : 1,
-                          onChanged: controller.seekTo,
-                        ),
-                      ),
-                      Padding(
-                        padding:
-                        const EdgeInsets.symmetric(horizontal: 10),
-                        child: Row(
-                          mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              controller.formatDuration(
-                                  controller.position.value),
-                              style: const TextStyle(
-                                  color: Colors.grey, fontSize: 14),
+                          child: Slider(
+                            value: controller.position.value.inSeconds
+                                .toDouble()
+                                .clamp(
+                              0,
+                              controller.duration.value.inSeconds
+                                  .toDouble(),
                             ),
-                            Text(
-                              controller.formatDuration(
-                                  controller.duration.value),
-                              style: const TextStyle(
-                                  color: Colors.grey, fontSize: 14),
-                            ),
-                          ],
+                            max: controller.duration.value.inSeconds
+                                .toDouble() >
+                                0
+                                ? controller.duration.value.inSeconds
+                                .toDouble()
+                                : 1,
+                            onChanged: controller.seekTo,
+                          ),
                         ),
-                      ),
-                    ],
+                        Padding(
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 10),
+                          child: Row(
+                            mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                controller.formatDuration(
+                                    controller.position.value),
+                                style: const TextStyle(
+                                    color: Colors.grey, fontSize: 14),
+                              ),
+                              Text(
+                                controller.formatDuration(
+                                    controller.duration.value),
+                                style: const TextStyle(
+                                    color: Colors.grey, fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
                 const SizedBox(height: 40),
 
                 // ✅ Playback Controls
@@ -187,7 +230,8 @@ class PlayerScreen extends StatelessWidget {  // ✅ StatelessWidget
                             color: Colors.white, size: 28),
                       ),
                       IconButton(
-                        onPressed: () => controller.player.seekToPrevious(),
+                        onPressed: () =>
+                            controller.player.seekToPrevious(),
                         icon: const Icon(Icons.skip_previous_rounded,
                             color: Colors.white, size: 40),
                       ),
@@ -236,20 +280,21 @@ class PlayerScreen extends StatelessWidget {  // ✅ StatelessWidget
   }
 
   // ✅ Timer Modal
-  void _showTimerModal(PlayerController controller) {
+  void _showTimerModal() {
     Get.bottomSheet(
       Obx(() => SingleChildScrollView(
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+          padding:
+          const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
           decoration: const BoxDecoration(
             color: Color(0xFF1A1A1A),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+            borderRadius:
+            BorderRadius.vertical(top: Radius.circular(25)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Drag Handle
               Center(
                 child: Container(
                   width: 40,
@@ -271,7 +316,8 @@ class PlayerScreen extends StatelessWidget {  // ✅ StatelessWidget
               ),
               const SizedBox(height: 16),
               ...controller.timerOptions.map((option) {
-                bool isSelected = controller.selectedTimer.value == option;
+                bool isSelected =
+                    controller.selectedTimer.value == option;
                 return GestureDetector(
                   onTap: () {
                     controller.setTimer(option);
@@ -313,13 +359,15 @@ class PlayerScreen extends StatelessWidget {  // ✅ StatelessWidget
   }
 
   // ✅ Speed Modal
-  void _showSpeedModal(PlayerController controller) {
+  void _showSpeedModal() {
     Get.bottomSheet(
       Container(
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+        padding:
+        const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
         decoration: const BoxDecoration(
           color: Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          borderRadius:
+          BorderRadius.vertical(top: Radius.circular(25)),
         ),
         child: Obx(() => Column(
           mainAxisSize: MainAxisSize.min,
@@ -334,9 +382,9 @@ class PlayerScreen extends StatelessWidget {  // ✅ StatelessWidget
             ),
             const SizedBox(height: 24),
             ...controller.speeds.map((speed) {
-              bool isSelected =
-                  (speed == 'Normal' && controller.currentSpeed.value == 'x1') ||
-                      (speed == controller.currentSpeed.value);
+              bool isSelected = (speed == 'Normal' &&
+                  controller.currentSpeed.value == 'x1') ||
+                  (speed == controller.currentSpeed.value);
               return GestureDetector(
                 onTap: () {
                   controller.setSpeed(speed);

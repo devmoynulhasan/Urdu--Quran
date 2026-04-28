@@ -13,6 +13,7 @@ class HomeController extends GetxController {
   // ✅ Last played
   var lastPlayedSurah = ''.obs;
   var lastPlayedReciter = ''.obs;
+  var lastPlayedAudioUrl = ''.obs; // ✅ audioUrl যোগ
 
   // ✅ API reciters
   var reciters = <ReciterModel>[].obs;
@@ -22,7 +23,7 @@ class HomeController extends GetxController {
   void onInit() {
     super.onInit();
     _loadLastPlayed();
-    fetchReciters(); // ✅ API থেকে load
+    fetchReciters();
   }
 
   // ✅ API call
@@ -37,38 +38,40 @@ class HomeController extends GetxController {
   void _loadLastPlayed() {
     lastPlayedSurah.value = LocalStorage.getLastPlayed() ?? '';
     lastPlayedReciter.value = LocalStorage.getLastPlayedReciter() ?? '';
+    lastPlayedAudioUrl.value = LocalStorage.getLastPlayedAudioUrl() ?? '';
   }
 
   void reloadLastPlayed() {
     lastPlayedSurah.value = LocalStorage.getLastPlayed() ?? '';
     lastPlayedReciter.value = LocalStorage.getLastPlayedReciter() ?? '';
+    lastPlayedAudioUrl.value = LocalStorage.getLastPlayedAudioUrl() ?? '';
   }
 
-  // ✅ Search — API call with query
+  // ✅ Search
   void onSearchChanged(String value) {
     searchQuery.value = value;
-    fetchReciters(search: value); // ✅ API এ search পাঠাও
+    fetchReciters(search: value);
   }
 
   void clearSearch() {
     searchQuery.value = '';
-    fetchReciters(); // ✅ সব reciters আবার load
+    fetchReciters();
   }
 
-  // ✅ Filtered list — এখন API থেকে আসছে তাই শুধু reciters return
   List<ReciterModel> get filteredReciters => reciters;
 
   void selectReciter(int index) => selectedReciterIndex.value = index;
   void changeNavIndex(int index) => selectedNavIndex.value = index;
 
-  // ✅ Continue Listening play
+  // ✅ Continue Listening play — audioUrl সহ
   void playLastPlayed() async {
     if (lastPlayedSurah.value.isNotEmpty) {
       await Get.to(() => PlayerScreen(
         surahName: lastPlayedSurah.value,
         reciterName: lastPlayedReciter.value,
+        audioUrl: lastPlayedAudioUrl.value, // ✅
       ));
-      reloadLastPlayed(); // ✅ ফিরে আসলে reload
+      reloadLastPlayed();
     }
   }
 }

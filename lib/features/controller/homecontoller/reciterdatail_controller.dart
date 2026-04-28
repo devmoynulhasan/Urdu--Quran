@@ -8,8 +8,13 @@ class ReciterDetailController extends GetxController {
   var suras = <SuraModel>[].obs;
   var isLoading = false.obs;
   var searchQuery = ''.obs;
+  String reciterId = '';
 
-  // ✅ API থেকে suras load
+  void init(String id) {
+    reciterId = id;
+    fetchSuras(reciterId: id);
+  }
+
   Future<void> fetchSuras({required String reciterId, String search = ''}) async {
     isLoading.value = true;
     final result = await SuraRepository.getSuras(
@@ -20,7 +25,6 @@ class ReciterDetailController extends GetxController {
     isLoading.value = false;
   }
 
-  // ✅ Search filter
   List<SuraModel> get filteredSuras {
     if (searchQuery.value.isEmpty) return suras;
     return suras
@@ -35,11 +39,7 @@ class ReciterDetailController extends GetxController {
   }
 
   void togglePlay(int index) {
-    if (playingIndex.value == index) {
-      playingIndex.value = null;
-    } else {
-      playingIndex.value = index;
-    }
+    playingIndex.value = playingIndex.value == index ? null : index;
   }
 
   bool isPlaying(int index) => playingIndex.value == index;
