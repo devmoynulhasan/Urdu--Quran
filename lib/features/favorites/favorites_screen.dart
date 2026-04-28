@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controller/favorites_controller/favorites_controller.dart';
+import '../favorite_model/favoritemodel.dart';
 
-
-class FavoritesScreen extends StatelessWidget {  // ✅ StatelessWidget
+class FavoritesScreen extends StatelessWidget {
   final VoidCallback? onBackToHome;
 
   const FavoritesScreen({super.key, this.onBackToHome});
 
   @override
   Widget build(BuildContext context) {
-    final FavoritesController controller = Get.put(FavoritesController()); // ✅ Controller
+    final FavoritesController controller = Get.put(FavoritesController());
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -20,7 +20,7 @@ class FavoritesScreen extends StatelessWidget {  // ✅ StatelessWidget
           SafeArea(
             child: Column(
               children: [
-                // Header
+                // ✅ Header
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20, vertical: 15),
@@ -56,10 +56,27 @@ class FavoritesScreen extends StatelessWidget {  // ✅ StatelessWidget
                 ),
                 const SizedBox(height: 20),
 
-                // ✅ Obx — auto rebuild
+                // ✅ List
                 Expanded(
-                  child: Obx(
-                        () => ListView.builder(
+                  child: Obx(() {
+                    if (controller.isLoading.value) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                            color: Color(0xFF007BFF)),
+                      );
+                    }
+
+                    if (controller.favorites.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No favorites yet',
+                          style: TextStyle(
+                              color: Colors.grey, fontSize: 18),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       itemCount: controller.favorites.length,
                       itemBuilder: (context, index) {
@@ -69,8 +86,8 @@ class FavoritesScreen extends StatelessWidget {  // ✅ StatelessWidget
                           controller,
                         );
                       },
-                    ),
-                  ),
+                    );
+                  }),
                 ),
               ],
             ),
@@ -81,46 +98,69 @@ class FavoritesScreen extends StatelessWidget {  // ✅ StatelessWidget
   }
 
   Widget _buildFavoriteItem(
-      String name, int index, FavoritesController controller) {
-
+      FavoriteModel favorite,
+      int index,
+      FavoritesController controller,
+      ) {
     bool isPlaying = controller.isPlaying(index);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(15),
-        border: isPlaying
-            ? Border.all(color: const Color(0xFF007BFF), width: 1.5)
-            : null,
-      ),
-      child: Row(
-        children: [
-          Text(
-            name,
-            style: const TextStyle(color: Colors.white, fontSize: 19),
-          ),
-          const Spacer(),
-          const Icon(Icons.download_outlined, color: Colors.grey, size: 24),
-          const SizedBox(width: 15),
-
-          // ✅ Play Button
-          GestureDetector(
-            onTap: () => controller.togglePlay(index),
-            child: isPlaying
-                ? _buildWaveform()
-                : Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
-                color: Color(0xFF007BFF),
-                shape: BoxShape.circle,
+    return GestureDetector(
+      // ✅ পুরো card — PlayerScreen এ যাবে
+      onTap: () => controller.playFavorite(favorite),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(15),
+          border: isPlaying
+              ? Border.all(color: const Color(0xFF007BFF), width: 1.5)
+              : null,
+        ),
+        child: Row(
+          children: [
+            // ✅ Surah info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${favorite.suraNumber}. ${favorite.title}',
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 19),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    favorite.reciterName,
+                    style: const TextStyle(
+                        color: Colors.grey, fontSize: 13),
+                  ),
+                ],
               ),
-              child: const Icon(Icons.play_arrow,
-                  color: Colors.white, size: 24),
             ),
-          ),
-        ],
+
+            // ✅ Download
+            const Icon(Icons.download_outlined,
+                color: Colors.grey, size: 24),
+            const SizedBox(width: 15),
+
+            // ✅ Play / Waveform
+            GestureDetector(
+              onTap: () => controller.togglePlay(index),
+              child: isPlaying
+                  ? _buildWaveform()
+                  : Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF007BFF),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.play_arrow,
+                    color: Colors.white, size: 24),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

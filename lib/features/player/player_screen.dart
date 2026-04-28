@@ -6,13 +6,15 @@ import '../controller/playercontroller/playerscreen_controller.dart';
 class PlayerScreen extends StatefulWidget {
   final String surahName;
   final String reciterName;
-  final String audioUrl; // ✅ S3 URL
+  final String audioUrl;
+  final String? suraId; // ✅ suraId নতুন — download + favorite এর জন্য
 
   const PlayerScreen({
     super.key,
     required this.surahName,
     required this.reciterName,
     required this.audioUrl,
+    this.suraId, // ✅ optional — পুরনো call break হবে না
   });
 
   @override
@@ -25,12 +27,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
-    // ✅ initState এ safe init
     controller = Get.put(PlayerController());
     controller.initAudio(
       widget.audioUrl,
       widget.surahName,
       widget.reciterName,
+      suraId: widget.suraId, // ✅ suraId pass করো
     );
   }
 
@@ -136,17 +138,82 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // Timer
                       GestureDetector(
                         onTap: () => _showTimerModal(),
                         child: _buildPlayerAction(Icons.access_time),
                       ),
+
+                      // Speed
                       GestureDetector(
                         onTap: () => _showSpeedModal(),
                         child: _buildPlayerActionText(
                             controller.currentSpeed.value),
                       ),
-                      _buildPlayerAction(Icons.download_outlined),
-                      _buildPlayerAction(Icons.favorite_border),
+
+                      // ✅ Download button — GET /quran/suras/{suraId}/audio-download
+                      GestureDetector(
+                        onTap: controller.isDownloading.value
+                            ? null
+                            : () => controller.downloadAudio(
+                          widget.surahName,
+                          widget.audioUrl, // ✅ সরাসরি S3 URL pass
+                        ),
+                        child: controller.isDownloading.value
+                            ? SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                value: controller
+                                    .downloadProgress.value,
+                                color: const Color(0xFF007BFF),
+                                strokeWidth: 2,
+                              ),
+                              Text(
+                                '${(controller.downloadProgress.value * 100).toInt()}%',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10),
+                              ),
+                            ],
+                          ),
+                        )
+                            : _buildPlayerAction(
+                            Icons.download_outlined),
+                      ),
+
+                      // ✅ Favorite button — red when active
+                      GestureDetector(
+                        onTap: controller.isFavoriteLoading.value
+                            ? null
+                            : () => controller.toggleFavorite(),
+                        child: controller.isFavoriteLoading.value
+                            ? const SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.red,
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          ),
+                        )
+                            : _buildPlayerAction(
+                          controller.isFavorite.value
+                              ? Icons.favorite       // ✅ filled red
+                              : Icons.favorite_border, // outline white
+                          color: controller.isFavorite.value
+                              ? Colors.red
+                              : Colors.white,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -154,23 +221,28 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                 // ✅ Loading Indicator
                 if (controller.isLoading.value)
-                  const CircularProgressIndicator(color: Color(0xFF007BFF))
+                  const CircularProgressIndicator(
+                      color: Color(0xFF007BFF))
                 else
-
                 // ✅ Progress Slider
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       children: [
                         SliderTheme(
                           data: SliderTheme.of(context).copyWith(
                             trackHeight: 2,
-                            thumbShape: const RoundSliderThumbShape(
+                            thumbShape:
+                            const RoundSliderThumbShape(
                                 enabledThumbRadius: 6),
-                            overlayShape: const RoundSliderOverlayShape(
+                            overlayShape:
+                            const RoundSliderOverlayShape(
                                 overlayRadius: 14),
-                            activeTrackColor: const Color(0xFF007BFF),
-                            inactiveTrackColor: Colors.grey.withAlpha(50),
+                            activeTrackColor:
+                            const Color(0xFF007BFF),
+                            inactiveTrackColor:
+                            Colors.grey.withAlpha(50),
                             thumbColor: const Color(0xFF007BFF),
                           ),
                           child: Slider(
@@ -191,8 +263,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           ),
                         ),
                         Padding(
-                          padding:
-                          const EdgeInsets.symmetric(horizontal: 10),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10),
                           child: Row(
                             mainAxisAlignment:
                             MainAxisAlignment.spaceBetween,
@@ -245,7 +317,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                                color: const Color(0xFF007BFF), width: 2),
+                                color: const Color(0xFF007BFF),
+                                width: 2),
                           ),
                           child: Icon(
                             controller.isPlaying.value
@@ -258,7 +331,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       ),
 
                       IconButton(
-                        onPressed: () => controller.player.seekToNext(),
+                        onPressed: () =>
+                            controller.player.seekToNext(),
                         icon: const Icon(Icons.skip_next_rounded,
                             color: Colors.white, size: 40),
                       ),
@@ -284,8 +358,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     Get.bottomSheet(
       Obx(() => SingleChildScrollView(
         child: Container(
-          padding:
-          const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+          padding: const EdgeInsets.symmetric(
+              vertical: 24, horizontal: 20),
           decoration: const BoxDecoration(
             color: Color(0xFF1A1A1A),
             borderRadius:
@@ -325,8 +399,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   },
                   child: Container(
                     width: double.infinity,
-                    margin: const EdgeInsets.symmetric(vertical: 5),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    margin:
+                    const EdgeInsets.symmetric(vertical: 5),
+                    padding:
+                    const EdgeInsets.symmetric(vertical: 16),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? const Color(0xFF007BFF).withAlpha(40)
@@ -366,8 +442,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
         decoration: const BoxDecoration(
           color: Color(0xFF1A1A1A),
-          borderRadius:
-          BorderRadius.vertical(top: Radius.circular(25)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
         ),
         child: Obx(() => Column(
           mainAxisSize: MainAxisSize.min,
@@ -392,8 +467,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 },
                 child: Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  margin:
+                  const EdgeInsets.symmetric(vertical: 8),
+                  padding:
+                  const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? Colors.white.withAlpha(20)
@@ -423,14 +500,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _buildPlayerAction(IconData icon) {
+  // ✅ color parameter যোগ করা হয়েছে favorite icon এর জন্য
+  Widget _buildPlayerAction(IconData icon, {Color color = Colors.white}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white.withAlpha(15),
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: Colors.white, size: 24),
+      child: Icon(icon, color: color, size: 24),
     );
   }
 

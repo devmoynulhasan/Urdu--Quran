@@ -144,7 +144,8 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                       Get.to(() => PlayerScreen(
                         surahName: '${sura.suraNumber}. ${sura.title}',
                         reciterName: widget.reciterName,
-                        audioUrl: sura.audioUrl, // ✅
+                        audioUrl: sura.audioUrl,
+                        suraId: sura.id, // ✅ এটা add করো
                       ));
                     },
                     child: Container(

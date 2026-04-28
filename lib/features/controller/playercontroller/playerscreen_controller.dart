@@ -1,9 +1,15 @@
+import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/local_storage.dart';
+import '../../favorite_model/favorite_repsitory.dart';
 
 class PlayerController extends GetxController {
-
   final AudioPlayer player = AudioPlayer();
 
   var isPlaying = false.obs;
@@ -12,6 +18,18 @@ class PlayerController extends GetxController {
   var currentSpeed = 'x1'.obs;
   var selectedTimer = 'Never'.obs;
   var isLoading = false.obs;
+
+  // ✅ Favorite state
+  var isFavorite = false.obs;
+  var isFavoriteLoading = false.obs;
+
+  // ✅ Download state
+  var isDownloading = false.obs;
+  var downloadProgress = 0.0.obs;
+
+  // ✅ Current sura info (favorite toggle এর জন্য দরকার)
+  String? currentSuraId;
+  final String guestId = 'guest-device-001'; // device unique id
 
   final List<String> speeds = ['x 0.7', 'Normal', 'x 1.5', 'x 2'];
   final List<String> timerOptions = [
@@ -24,25 +42,138 @@ class PlayerController extends GetxController {
     '60 Minutes',
   ];
 
-  // ✅ audioUrl দিয়ে init
+  // ✅ audioUrl দিয়ে init — suraId নতুন parameter
   Future<void> initAudio(
-      String audioUrl, String surahName, String reciterName) async {
+      String audioUrl,
+      String surahName,
+      String reciterName, {
+        String? suraId,
+      }) async {
     try {
       isLoading.value = true;
-      await player.setUrl(audioUrl);
+      currentSuraId = suraId;
 
-      // ✅ audioUrl সহ save
+      await player.setUrl(audioUrl);
       await LocalStorage.saveLastPlayed(surahName, reciterName, audioUrl);
 
       player.positionStream.listen((pos) => position.value = pos);
-      player.durationStream.listen((dur) => duration.value = dur ?? Duration.zero);
+      player.durationStream
+          .listen((dur) => duration.value = dur ?? Duration.zero);
       player.playingStream.listen((playing) => isPlaying.value = playing);
 
       isLoading.value = false;
       player.play();
+
+      // ✅ Favorite status চেক করো
+      if (suraId != null) {
+        await checkFavoriteStatus(suraId);
+      }
     } catch (e) {
       isLoading.value = false;
       print('❌ Audio Error: $e');
+    }
+  }
+
+  // ✅ Favorite status check
+  Future<void> checkFavoriteStatus(String suraId) async {
+    isFavoriteLoading.value = true;
+    final favorites =
+    await FavoriteRepository.getFavorites(guestId: guestId);
+    isFavorite.value = favorites.any((f) => f.id == suraId);
+    isFavoriteLoading.value = false;
+  }
+
+  // ✅ Favorite toggle — POST /quran/favorites
+  Future<void> toggleFavorite() async {
+    if (currentSuraId == null) return;
+    isFavoriteLoading.value = true;
+
+    try {
+      if (isFavorite.value) {
+        await FavoriteRepository.removeFavorite(
+          guestId: guestId,
+          suraId: currentSuraId!,
+        );
+        isFavorite.value = false;
+        Get.snackbar('Removed', 'Removed from favorites',
+            snackPosition: SnackPosition.BOTTOM);
+      } else {
+        await FavoriteRepository.addFavorite(
+          guestId: guestId,
+          suraId: currentSuraId!,
+        );
+        isFavorite.value = true;
+        Get.snackbar('Added', 'Added to favorites',
+            snackPosition: SnackPosition.BOTTOM);
+      }
+    } catch (e) {
+      print('❌ Favorite Error: $e');
+    }
+
+    isFavoriteLoading.value = false;
+  }
+
+  Future<void> downloadAudio(String surahName, String audioUrl) async {
+
+    // ✅ Android version check করে সঠিক permission নাও
+    if (Platform.isAndroid) {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
+
+      if (sdkInt < 30) {
+        // Android 10 এবং নিচে
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          Get.snackbar('Permission Denied', 'Storage permission required',
+              snackPosition: SnackPosition.BOTTOM);
+          return;
+        }
+      } else if (sdkInt < 33) {
+        // Android 11-12
+        final status = await Permission.manageExternalStorage.request();
+        if (!status.isGranted) {
+          Get.snackbar('Permission Denied', 'Please allow storage access',
+              snackPosition: SnackPosition.BOTTOM);
+          return;
+        }
+      }
+      // Android 13+ — কোনো permission লাগে না
+    }
+
+    try {
+      isDownloading.value = true;
+      downloadProgress.value = 0.0;
+
+      final httpClient = HttpClient()
+        ..badCertificateCallback = (cert, host, port) => true;
+
+      final adapter = IOHttpClientAdapter();
+      adapter.createHttpClient = () => httpClient;
+
+      final dio = Dio();
+      dio.httpClientAdapter = adapter;
+
+      final downloadsPath = '/storage/emulated/0/Download';
+      final filePath = '$downloadsPath/$surahName.mp3';
+
+      await dio.download(
+        audioUrl,
+        filePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            downloadProgress.value = received / total;
+          }
+        },
+      );
+
+      isDownloading.value = false;
+      Get.snackbar('Downloaded', '$surahName saved to Downloads',
+          snackPosition: SnackPosition.BOTTOM);
+    } catch (e) {
+      isDownloading.value = false;
+      print('❌ Download Error: $e');
+      Get.snackbar('Error', 'Download failed',
+          snackPosition: SnackPosition.BOTTOM);
     }
   }
 
