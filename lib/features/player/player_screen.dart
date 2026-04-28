@@ -55,7 +55,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             decoration: BoxDecoration(
               image: DecorationImage(
                 image: const AssetImage(AssetPaths.mosque),
-                fit: BoxFit.cover,
+                fit: BoxFit.fill,
                 colorFilter: ColorFilter.mode(
                   Colors.black.withAlpha(40),
                   BlendMode.darken,
@@ -89,7 +89,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 // ✅ Top Header
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 10),
+                      horizontal: 25, vertical: 10),
                   child: Row(
                     children: [
                       GestureDetector(
