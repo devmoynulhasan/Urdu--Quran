@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controller/homecontoller/allreciters_controller.dart';
 import '../controller/homecontoller/homescreen_controller.dart';
+import '../favorites/favorites_screen.dart';
 import '../reciter_model/reciter_model.dart';
 
 class AllRecitersScreen extends StatelessWidget {
@@ -119,7 +120,10 @@ class AllRecitersScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () => controller.changeNavIndex(1),
+                    onTap: () {
+                      controller.changeNavIndex(1);
+                      Get.to(() => const FavoritesScreen()); // ✅ FavoritesScreen এ navigate
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.all(14),

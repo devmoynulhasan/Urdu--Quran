@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -16,6 +17,9 @@ class ReciterDetailController extends GetxController {
   var suras = <SuraModel>[].obs;
   var isLoading = false.obs;
   var searchQuery = ''.obs;
+  var isDownloading = false.obs;
+  var downloadProgress = 0.0.obs;
+  var downloadingName = ''.obs;
   String reciterId = '';
 
   @override
@@ -103,6 +107,10 @@ class ReciterDetailController extends GetxController {
     }
 
     try {
+      isDownloading.value = true;
+      downloadProgress.value = 0.0;
+      downloadingName.value = surahName;
+
       final httpClient = HttpClient()
         ..badCertificateCallback = (cert, host, port) => true;
       final adapter = IOHttpClientAdapter();
@@ -112,11 +120,27 @@ class ReciterDetailController extends GetxController {
       dio.httpClientAdapter = adapter;
 
       final filePath = '/storage/emulated/0/Download/$surahName.mp3';
-      await dio.download(audioUrl, filePath);
 
-      Get.snackbar('Downloaded', '$surahName saved to Downloads',
-          snackPosition: SnackPosition.BOTTOM);
+      await dio.download(
+        audioUrl,
+        filePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            downloadProgress.value = received / total;
+          }
+        },
+      );
+
+      isDownloading.value = false;
+      Get.snackbar(
+        'Downloaded',
+        '$surahName saved to Downloads',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.yellow,
+        colorText: Colors.black,
+      );
     } catch (e) {
+      isDownloading.value = false;
       print('❌ Download Error: $e');
       Get.snackbar('Error', 'Download failed',
           snackPosition: SnackPosition.BOTTOM);

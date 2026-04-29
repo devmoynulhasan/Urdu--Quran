@@ -186,51 +186,53 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
 
                             // ✅ Download
                             GestureDetector(
-                              onTap: () =>
-                                  controller.downloadAudio(
-                                    '${sura.suraNumber}_${sura.title}',
-                                    sura.audioUrl,
-                                  ),
-                              child: const Icon(
+                              onTap: () => controller.downloadAudio(
+                                '${sura.suraNumber}_${sura.title}',
+                                sura.audioUrl,
+                              ),
+                              child: Obx(() =>
+                              controller.isDownloading.value &&
+                                  controller.downloadingName.value == '${sura.suraNumber}_${sura.title}'
+                                  ? SizedBox(
+                                width: 36,
+                                height: 36,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      value: controller.downloadProgress.value,
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                    Text(
+                                      '${(controller.downloadProgress.value * 100).toInt()}%',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                                  : const Icon(
                                 Icons.download_outlined,
                                 color: Colors.grey,
                                 size: 26,
+                              ),
                               ),
                             ),
                             const SizedBox(width: 14),
 
                             // ✅ Play / Loading / Waveform
                             GestureDetector(
-                              onTap: () =>
-                                  controller.togglePlay(
-                                      index, sura.audioUrl),
-                              child: isLoadingThis
-                                  ? const SizedBox(
-                                width: 44,
-                                height: 44,
-                                child: Center(
-                                  child:
-                                  CircularProgressIndicator(
-                                    color: Color(
-                                        0xFF007BFF),
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              )
-                                  : isPlaying
-                              // ✅ Animated waveform
+                              onTap: () => controller.togglePlay(index, sura.audioUrl),
+                              child: isPlaying
                                   ? const AnimatedWaveform()
-                              // ✅ Play button
                                   : Container(
-                                padding:
-                                const EdgeInsets
-                                    .all(10),
-                                decoration:
-                                const BoxDecoration(
-                                  color: Color(
-                                      0xFF007BFF),
-                                  shape:
-                                  BoxShape.circle,
+                                padding: const EdgeInsets.all(10),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF007BFF),
+                                  shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
                                   Icons.play_arrow,

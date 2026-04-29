@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -15,8 +16,11 @@ class FavoritesController extends GetxController {
   var playingIndex = RxnInt();
   var favorites = <FavoriteModel>[].obs;
   var isLoading = false.obs;
-  var isAudioLoading = false.obs;
-  var loadingIndex = RxnInt();
+
+  // ✅ Download progress
+  var isDownloading = false.obs;
+  var downloadProgress = 0.0.obs;
+  var downloadingName = ''.obs;
 
   final String guestId = 'guest-device-001';
 
@@ -32,7 +36,6 @@ class FavoritesController extends GetxController {
     });
   }
 
-  // ✅ Favorites load
   Future<void> fetchFavorites() async {
     isLoading.value = true;
     final result = await FavoriteRepository.getFavorites(guestId: guestId);
@@ -40,13 +43,10 @@ class FavoritesController extends GetxController {
     isLoading.value = false;
   }
 
-  // ✅ Favorite toggle — সাথে সাথে UI update
   Future<void> toggleFavorite(String suraId) async {
     try {
       if (isFavorite(suraId)) {
-        // ✅ আগে UI update, তারপর API
         favorites.removeWhere((f) => f.id == suraId);
-
         await FavoriteRepository.removeFavorite(
           guestId: guestId,
           suraId: suraId,
@@ -64,20 +64,18 @@ class FavoritesController extends GetxController {
       }
     } catch (e) {
       print('❌ Toggle Error: $e');
-      await fetchFavorites(); // ✅ Error হলে restore
+      await fetchFavorites();
     }
   }
 
   bool isFavorite(String suraId) => favorites.any((f) => f.id == suraId);
 
-  // ✅ Play icon tap — inline audio play/pause
   Future<void> togglePlay(int index, String audioUrl) async {
     if (playingIndex.value == index) {
       await _audioPlayer.pause();
       playingIndex.value = null;
     } else {
       playingIndex.value = index;
-      loadingIndex.value = index;
       try {
         await _audioPlayer.setUrl(audioUrl);
         await _audioPlayer.play();
@@ -85,13 +83,11 @@ class FavoritesController extends GetxController {
         print('❌ Audio Error: $e');
         playingIndex.value = null;
       }
-      loadingIndex.value = null;
     }
   }
 
   bool isPlaying(int index) => playingIndex.value == index;
 
-  // ✅ Card tap — PlayerScreen এ যাবে, ফিরলে refresh
   void playFavorite(FavoriteModel favorite) {
     _audioPlayer.pause();
     playingIndex.value = null;
@@ -102,12 +98,11 @@ class FavoritesController extends GetxController {
       audioUrl: favorite.audioUrl,
       suraId: favorite.id,
     ))?.then((_) {
-      // ✅ PlayerScreen থেকে ফিরলে list refresh
       fetchFavorites();
     });
   }
 
-  // ✅ Download
+  // ✅ Download with progress
   Future<void> downloadAudio(String surahName, String audioUrl) async {
     if (Platform.isAndroid) {
       final androidInfo = await DeviceInfoPlugin().androidInfo;
@@ -131,6 +126,10 @@ class FavoritesController extends GetxController {
     }
 
     try {
+      isDownloading.value = true;
+      downloadProgress.value = 0.0;
+      downloadingName.value = surahName;
+
       final httpClient = HttpClient()
         ..badCertificateCallback = (cert, host, port) => true;
       final adapter = IOHttpClientAdapter();
@@ -140,11 +139,27 @@ class FavoritesController extends GetxController {
       dio.httpClientAdapter = adapter;
 
       final filePath = '/storage/emulated/0/Download/$surahName.mp3';
-      await dio.download(audioUrl, filePath);
 
-      Get.snackbar('Downloaded', '$surahName saved to Downloads',
-          snackPosition: SnackPosition.BOTTOM);
+      await dio.download(
+        audioUrl,
+        filePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            downloadProgress.value = received / total;
+          }
+        },
+      );
+
+      isDownloading.value = false;
+      Get.snackbar(
+        'Downloaded',
+        '$surahName saved to Downloads',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.yellow,
+        colorText: Colors.black,
+      );
     } catch (e) {
+      isDownloading.value = false;
       print('❌ Download Error: $e');
       Get.snackbar('Error', 'Download failed',
           snackPosition: SnackPosition.BOTTOM);

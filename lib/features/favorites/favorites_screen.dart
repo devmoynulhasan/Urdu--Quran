@@ -137,34 +137,50 @@ class FavoritesScreen extends StatelessWidget {
             ),
 
             // ✅ Download icon
+            // ✅ Download icon
             GestureDetector(
               onTap: () => controller.downloadAudio(
                 '${favorite.suraNumber}_${favorite.title}',
                 favorite.audioUrl,
               ),
-              child: const Icon(Icons.download_outlined,
-                  color: Colors.grey, size: 24),
+              child: Obx(() =>
+              controller.isDownloading.value &&
+                  controller.downloadingName.value == '${favorite.suraNumber}_${favorite.title}'
+                  ? SizedBox(
+                width: 36,
+                height: 36,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: controller.downloadProgress.value,
+                      color: Colors.yellow,
+                      strokeWidth: 2,
+                    ),
+                    Text(
+                      '${(controller.downloadProgress.value * 100).toInt()}%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+                  : const Icon(
+                Icons.download_outlined,
+                color: Colors.grey,
+                size: 24,
+              ),
+              ),
             ),
             const SizedBox(width: 15),
 
             // ✅ Play icon
             GestureDetector(
               onTap: () => controller.togglePlay(index, favorite.audioUrl),
-              child: controller.loadingIndex.value == index
-                  ? const SizedBox(
-                width: 44,
-                height: 44,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFF007BFF),
-                    strokeWidth: 2,
-                  ),
-                ),
-              )
-                  : isPlaying
-              // ✅ Playing — শুধু waveform
+              child: isPlaying
                   ? const AnimatedWaveform()
-              // ✅ Not playing — play icon
                   : Container(
                 padding: const EdgeInsets.all(10),
                 decoration: const BoxDecoration(
