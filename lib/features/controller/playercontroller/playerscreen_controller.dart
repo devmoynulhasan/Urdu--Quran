@@ -4,10 +4,10 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../core/local_storage.dart';
 import '../../favorite_model/favorite_repsitory.dart';
+import '../favorites_controller/favorites_controller.dart'; // ✅ import
 
 class PlayerController extends GetxController {
   final AudioPlayer player = AudioPlayer();
@@ -19,17 +19,14 @@ class PlayerController extends GetxController {
   var selectedTimer = 'Never'.obs;
   var isLoading = false.obs;
 
-  // ✅ Favorite state
   var isFavorite = false.obs;
   var isFavoriteLoading = false.obs;
 
-  // ✅ Download state
   var isDownloading = false.obs;
   var downloadProgress = 0.0.obs;
 
-  // ✅ Current sura info (favorite toggle এর জন্য দরকার)
   String? currentSuraId;
-  final String guestId = 'guest-device-001'; // device unique id
+  final String guestId = 'guest-device-001';
 
   final List<String> speeds = ['x 0.7', 'Normal', 'x 1.5', 'x 2'];
   final List<String> timerOptions = [
@@ -42,7 +39,6 @@ class PlayerController extends GetxController {
     '60 Minutes',
   ];
 
-  // ✅ audioUrl দিয়ে init — suraId নতুন parameter
   Future<void> initAudio(
       String audioUrl,
       String surahName,
@@ -64,7 +60,6 @@ class PlayerController extends GetxController {
       isLoading.value = false;
       player.play();
 
-      // ✅ Favorite status চেক করো
       if (suraId != null) {
         await checkFavoriteStatus(suraId);
       }
@@ -83,45 +78,55 @@ class PlayerController extends GetxController {
     isFavoriteLoading.value = false;
   }
 
-  // ✅ Favorite toggle — POST /quran/favorites
+  // ✅ Favorite toggle — UI সাথে সাথে update + FavoritesController sync
   Future<void> toggleFavorite() async {
     if (currentSuraId == null) return;
     isFavoriteLoading.value = true;
 
     try {
       if (isFavorite.value) {
+        // ✅ আগে UI update
+        isFavorite.value = false;
+
         await FavoriteRepository.removeFavorite(
           guestId: guestId,
           suraId: currentSuraId!,
         );
-        isFavorite.value = false;
         Get.snackbar('Removed', 'Removed from favorites',
             snackPosition: SnackPosition.BOTTOM);
       } else {
+        // ✅ আগে UI update
+        isFavorite.value = true;
+
         await FavoriteRepository.addFavorite(
           guestId: guestId,
           suraId: currentSuraId!,
         );
-        isFavorite.value = true;
         Get.snackbar('Added', 'Added to favorites',
             snackPosition: SnackPosition.BOTTOM);
       }
+
+      // ✅ FavoritesController active থাকলে sync করো
+      if (Get.isRegistered<FavoritesController>()) {
+        Get.find<FavoritesController>().fetchFavorites();
+      }
     } catch (e) {
+      // ✅ Error হলে আগের state ফিরিয়ে দাও
+      isFavorite.value = !isFavorite.value;
       print('❌ Favorite Error: $e');
+      Get.snackbar('Error', 'Something went wrong',
+          snackPosition: SnackPosition.BOTTOM);
     }
 
     isFavoriteLoading.value = false;
   }
 
   Future<void> downloadAudio(String surahName, String audioUrl) async {
-
-    // ✅ Android version check করে সঠিক permission নাও
     if (Platform.isAndroid) {
       final androidInfo = await DeviceInfoPlugin().androidInfo;
       final sdkInt = androidInfo.version.sdkInt;
 
       if (sdkInt < 30) {
-        // Android 10 এবং নিচে
         final status = await Permission.storage.request();
         if (!status.isGranted) {
           Get.snackbar('Permission Denied', 'Storage permission required',
@@ -129,7 +134,6 @@ class PlayerController extends GetxController {
           return;
         }
       } else if (sdkInt < 33) {
-        // Android 11-12
         final status = await Permission.manageExternalStorage.request();
         if (!status.isGranted) {
           Get.snackbar('Permission Denied', 'Please allow storage access',
@@ -137,7 +141,6 @@ class PlayerController extends GetxController {
           return;
         }
       }
-      // Android 13+ — কোনো permission লাগে না
     }
 
     try {
@@ -146,15 +149,13 @@ class PlayerController extends GetxController {
 
       final httpClient = HttpClient()
         ..badCertificateCallback = (cert, host, port) => true;
-
       final adapter = IOHttpClientAdapter();
       adapter.createHttpClient = () => httpClient;
 
       final dio = Dio();
       dio.httpClientAdapter = adapter;
 
-      final downloadsPath = '/storage/emulated/0/Download';
-      final filePath = '$downloadsPath/$surahName.mp3';
+      final filePath = '/storage/emulated/0/Download/$surahName.mp3';
 
       await dio.download(
         audioUrl,

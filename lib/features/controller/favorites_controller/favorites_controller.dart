@@ -25,7 +25,6 @@ class FavoritesController extends GetxController {
     super.onInit();
     fetchFavorites();
 
-    // ✅ Audio শেষ হলে waveform বন্ধ
     _audioPlayer.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
         playingIndex.value = null;
@@ -41,14 +40,32 @@ class FavoritesController extends GetxController {
     isLoading.value = false;
   }
 
-  // ✅ Favorite toggle
+  // ✅ Favorite toggle — সাথে সাথে UI update
   Future<void> toggleFavorite(String suraId) async {
-    if (isFavorite(suraId)) {
-      await FavoriteRepository.removeFavorite(guestId: guestId, suraId: suraId);
-    } else {
-      await FavoriteRepository.addFavorite(guestId: guestId, suraId: suraId);
+    try {
+      if (isFavorite(suraId)) {
+        // ✅ আগে UI update, তারপর API
+        favorites.removeWhere((f) => f.id == suraId);
+
+        await FavoriteRepository.removeFavorite(
+          guestId: guestId,
+          suraId: suraId,
+        );
+        Get.snackbar('Removed', 'Removed from favorites',
+            snackPosition: SnackPosition.BOTTOM);
+      } else {
+        await FavoriteRepository.addFavorite(
+          guestId: guestId,
+          suraId: suraId,
+        );
+        await fetchFavorites();
+        Get.snackbar('Added', 'Added to favorites',
+            snackPosition: SnackPosition.BOTTOM);
+      }
+    } catch (e) {
+      print('❌ Toggle Error: $e');
+      await fetchFavorites(); // ✅ Error হলে restore
     }
-    await fetchFavorites();
   }
 
   bool isFavorite(String suraId) => favorites.any((f) => f.id == suraId);
@@ -60,7 +77,7 @@ class FavoritesController extends GetxController {
       playingIndex.value = null;
     } else {
       playingIndex.value = index;
-      loadingIndex.value = index; // ✅ কোন index loading সেটা set করো
+      loadingIndex.value = index;
       try {
         await _audioPlayer.setUrl(audioUrl);
         await _audioPlayer.play();
@@ -68,12 +85,13 @@ class FavoritesController extends GetxController {
         print('❌ Audio Error: $e');
         playingIndex.value = null;
       }
-      loadingIndex.value = null; // ✅ loading শেষ
+      loadingIndex.value = null;
     }
   }
+
   bool isPlaying(int index) => playingIndex.value == index;
 
-  // ✅ Card tap — PlayerScreen এ যাবে
+  // ✅ Card tap — PlayerScreen এ যাবে, ফিরলে refresh
   void playFavorite(FavoriteModel favorite) {
     _audioPlayer.pause();
     playingIndex.value = null;
@@ -83,7 +101,10 @@ class FavoritesController extends GetxController {
       reciterName: favorite.reciterName,
       audioUrl: favorite.audioUrl,
       suraId: favorite.id,
-    ));
+    ))?.then((_) {
+      // ✅ PlayerScreen থেকে ফিরলে list refresh
+      fetchFavorites();
+    });
   }
 
   // ✅ Download
