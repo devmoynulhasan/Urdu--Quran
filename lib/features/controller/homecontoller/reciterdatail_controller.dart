@@ -1,11 +1,12 @@
 import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:urdu_quran/features/player/audio_session_manager.dart';
 import '../../sura_model/sura_model.dart';
 import '../../sura_model/sura_repository.dart';
 
@@ -13,7 +14,6 @@ class ReciterDetailController extends GetxController {
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   var playingIndex = RxnInt();
-  var loadingIndex = RxnInt();
   var suras = <SuraModel>[].obs;
   var isLoading = false.obs;
   var searchQuery = ''.obs;
@@ -39,7 +39,10 @@ class ReciterDetailController extends GetxController {
     fetchSuras(reciterId: id);
   }
 
-  Future<void> fetchSuras({required String reciterId, String search = ''}) async {
+  Future<void> fetchSuras({
+    required String reciterId,
+    String search = '',
+  }) async {
     isLoading.value = true;
     final result = await SuraRepository.getSuras(
       reciterId: reciterId,
@@ -67,9 +70,15 @@ class ReciterDetailController extends GetxController {
     if (playingIndex.value == index) {
       await _audioPlayer.pause();
       playingIndex.value = null;
+      AudioSessionManager.unregister(); // ✅
     } else {
+      // ✅ আগের audio বন্ধ করো
+      AudioSessionManager.register(() {
+        _audioPlayer.pause();
+        playingIndex.value = null;
+      });
+
       playingIndex.value = index;
-      loadingIndex.value = index;
       try {
         await _audioPlayer.setUrl(audioUrl);
         await _audioPlayer.play();
@@ -77,7 +86,6 @@ class ReciterDetailController extends GetxController {
         print('❌ Audio Error: $e');
         playingIndex.value = null;
       }
-      loadingIndex.value = null;
     }
   }
 
@@ -154,6 +162,7 @@ class ReciterDetailController extends GetxController {
 
   @override
   void onClose() {
+    // ✅ permanent: true হলে onClose call হবে না
     _audioPlayer.dispose();
     super.onClose();
   }

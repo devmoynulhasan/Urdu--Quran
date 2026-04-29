@@ -27,6 +27,7 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
     controller = Get.put(
       ReciterDetailController(),
       tag: widget.reciterId,
+      permanent: true,
     );
     controller.init(widget.reciterId);
   }
@@ -34,7 +35,7 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
   @override
   void dispose() {
     searchController.dispose();
-    Get.delete<ReciterDetailController>(tag: widget.reciterId);
+    // ✅ Get.delete() নেই — audio চলতে থাকবে
     super.dispose();
   }
 
@@ -135,52 +136,46 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                     16, 0, 16, 100),
                 itemCount: controller.filteredSuras.length,
                 itemBuilder: (context, index) {
-                  final sura =
-                  controller.filteredSuras[index];
+                  final sura = controller.filteredSuras[index];
 
                   return Obx(() {
-                    final isPlaying =
-                    controller.isPlaying(index);
-                    final isLoadingThis =
-                        controller.loadingIndex.value ==
-                            index;
+                    final isPlaying = controller.isPlaying(index);
+                    // ✅ isLoadingThis বাদ
 
                     return GestureDetector(
-                      // ✅ Card tap — PlayerScreen
                       onTap: () {
                         controller.stopAndClear();
+                        final playlist = controller.filteredSuras.map((s) => {
+                          'audioUrl': s.audioUrl,
+                          'surahName': '${s.suraNumber}. ${s.title}',
+                          'reciterName': widget.reciterName,
+                          'suraId': s.id,
+                        }).toList();
+
                         Get.to(() => PlayerScreen(
-                          surahName:
-                          '${sura.suraNumber}. ${sura.title}',
+                          surahName: '${sura.suraNumber}. ${sura.title}',
                           reciterName: widget.reciterName,
                           audioUrl: sura.audioUrl,
                           suraId: sura.id,
+                          playlist: playlist,
+                          playlistIndex: index,
                         ));
                       },
                       child: Container(
-                        margin:
-                        const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 18, horizontal: 16),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
                         decoration: BoxDecoration(
                           color: const Color(0xFF1A1A1A),
-                          borderRadius:
-                          BorderRadius.circular(15),
+                          borderRadius: BorderRadius.circular(15),
                           border: isPlaying
-                              ? Border.all(
-                              color:
-                              const Color(0xFF007BFF),
-                              width: 1.5)
+                              ? Border.all(color: const Color(0xFF007BFF), width: 1.5)
                               : null,
                         ),
                         child: Row(
                           children: [
-                            // ✅ Surah Name
                             Text(
                               '${sura.suraNumber}. ${sura.title}',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18),
+                              style: const TextStyle(color: Colors.white, fontSize: 18),
                             ),
                             const Spacer(),
 
@@ -201,7 +196,7 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                                   children: [
                                     CircularProgressIndicator(
                                       value: controller.downloadProgress.value,
-                                      color: Colors.white,
+                                      color: Colors.yellow,
                                       strokeWidth: 2,
                                     ),
                                     Text(
@@ -223,7 +218,7 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                             ),
                             const SizedBox(width: 14),
 
-                            // ✅ Play / Loading / Waveform
+                            // ✅ Play / Waveform — loadingThis বাদ
                             GestureDetector(
                               onTap: () => controller.togglePlay(index, sura.audioUrl),
                               child: isPlaying

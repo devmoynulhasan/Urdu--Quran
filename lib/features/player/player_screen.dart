@@ -7,14 +7,18 @@ class PlayerScreen extends StatefulWidget {
   final String surahName;
   final String reciterName;
   final String audioUrl;
-  final String? suraId; // ✅ suraId নতুন — download + favorite এর জন্য
+  final String? suraId;
+  final List<Map<String, String>> playlist;
+  final int playlistIndex;
 
   const PlayerScreen({
     super.key,
     required this.surahName,
     required this.reciterName,
     required this.audioUrl,
-    this.suraId, // ✅ optional — পুরনো call break হবে না
+    this.suraId,
+    this.playlist = const [],
+    this.playlistIndex = 0,
   });
 
   @override
@@ -27,18 +31,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
-    controller = Get.put(PlayerController());
+    controller = Get.put(
+      PlayerController(),
+      permanent: true,
+    );
+    controller.setPlaylist(widget.playlist, widget.playlistIndex);
     controller.initAudio(
       widget.audioUrl,
       widget.surahName,
       widget.reciterName,
-      suraId: widget.suraId, // ✅ suraId pass করো
+      suraId: widget.suraId,
     );
   }
 
   @override
   void dispose() {
-    Get.delete<PlayerController>();
+    // ✅ Get.delete() নেই — audio চলতে থাকবে
     super.dispose();
   }
 
@@ -134,14 +142,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                 // ✅ Actions Row
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 30),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 30),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
                     children: [
                       // Timer
                       GestureDetector(
                         onTap: () => _showTimerModal(),
-                        child: _buildPlayerAction(Icons.access_time),
+                        child:
+                        _buildPlayerAction(Icons.access_time),
                       ),
 
                       // Speed
@@ -151,13 +162,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             controller.currentSpeed.value),
                       ),
 
-                      // ✅ Download button — GET /quran/suras/{suraId}/audio-download
+                      // ✅ Download
                       GestureDetector(
                         onTap: controller.isDownloading.value
                             ? null
                             : () => controller.downloadAudio(
                           widget.surahName,
-                          widget.audioUrl, // ✅ সরাসরি S3 URL pass
+                          widget.audioUrl,
                         ),
                         child: controller.isDownloading.value
                             ? SizedBox(
@@ -169,7 +180,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               CircularProgressIndicator(
                                 value: controller
                                     .downloadProgress.value,
-                                color: const Color(0xFF007BFF),
+                                color:
+                                const Color(0xFF007BFF),
                                 strokeWidth: 2,
                               ),
                               Text(
@@ -185,7 +197,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             Icons.download_outlined),
                       ),
 
-                      // ✅ Favorite button — red when active
+                      // ✅ Favorite
                       GestureDetector(
                         onTap: controller.isFavoriteLoading.value
                             ? null
@@ -207,8 +219,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         )
                             : _buildPlayerAction(
                           controller.isFavorite.value
-                              ? Icons.favorite       // ✅ filled red
-                              : Icons.favorite_border, // outline white
+                              ? Icons.favorite
+                              : Icons.favorite_border,
                           color: controller.isFavorite.value
                               ? Colors.red
                               : Colors.white,
@@ -219,15 +231,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
                 const SizedBox(height: 40),
 
-                // ✅ Loading Indicator
+                // ✅ Loading / Slider
                 if (controller.isLoading.value)
                   const CircularProgressIndicator(
                       color: Color(0xFF007BFF))
                 else
-                // ✅ Progress Slider
                   Padding(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20),
                     child: Column(
                       children: [
                         SliderTheme(
@@ -246,17 +257,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             thumbColor: const Color(0xFF007BFF),
                           ),
                           child: Slider(
-                            value: controller.position.value.inSeconds
+                            value: controller
+                                .position.value.inSeconds
                                 .toDouble()
                                 .clamp(
                               0,
-                              controller.duration.value.inSeconds
+                              controller
+                                  .duration.value.inSeconds
                                   .toDouble(),
                             ),
                             max: controller.duration.value.inSeconds
                                 .toDouble() >
                                 0
-                                ? controller.duration.value.inSeconds
+                                ? controller
+                                .duration.value.inSeconds
                                 .toDouble()
                                 : 1,
                             onChanged: controller.seekTo,
@@ -273,13 +287,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 controller.formatDuration(
                                     controller.position.value),
                                 style: const TextStyle(
-                                    color: Colors.grey, fontSize: 14),
+                                    color: Colors.grey,
+                                    fontSize: 14),
                               ),
                               Text(
                                 controller.formatDuration(
                                     controller.duration.value),
                                 style: const TextStyle(
-                                    color: Colors.grey, fontSize: 14),
+                                    color: Colors.grey,
+                                    fontSize: 14),
                               ),
                             ],
                           ),
@@ -294,18 +310,28 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20, vertical: 40),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
                     children: [
+                      // ✅ Repeat
                       IconButton(
                         onPressed: () {},
                         icon: const Icon(Icons.repeat,
                             color: Colors.white, size: 28),
                       ),
+
+                      // ✅ Previous
                       IconButton(
                         onPressed: () =>
-                            controller.player.seekToPrevious(),
-                        icon: const Icon(Icons.skip_previous_rounded,
-                            color: Colors.white, size: 40),
+                            controller.playPrevious(),
+                        icon: Icon(
+                          Icons.skip_previous_rounded,
+                          color: controller.playlist.isEmpty ||
+                              controller.currentIndex <= 0
+                              ? Colors.grey
+                              : Colors.white,
+                          size: 40,
+                        ),
                       ),
 
                       // ✅ Play / Pause
@@ -330,16 +356,32 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ),
                       ),
 
+                      // ✅ Next
                       IconButton(
-                        onPressed: () =>
-                            controller.player.seekToNext(),
-                        icon: const Icon(Icons.skip_next_rounded,
-                            color: Colors.white, size: 40),
+                        onPressed: () => controller.playNext(),
+                        icon: Icon(
+                          Icons.skip_next_rounded,
+                          color: controller.playlist.isEmpty ||
+                              controller.currentIndex >=
+                                  controller.playlist.length - 1
+                              ? Colors.grey
+                              : Colors.white,
+                          size: 40,
+                        ),
                       ),
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.volume_up_rounded,
-                            color: Colors.white, size: 28),
+
+                      // ✅ Volume
+                      GestureDetector(
+                        onTap: () => _showVolumeModal(),
+                        child: Icon(
+                          controller.volume.value == 0
+                              ? Icons.volume_off_rounded
+                              : controller.volume.value < 0.5
+                              ? Icons.volume_down_rounded
+                              : Icons.volume_up_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                       ),
                     ],
                   ),
@@ -351,6 +393,68 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ],
       ),
     ));
+  }
+
+  // ✅ Volume Modal
+  void _showVolumeModal() {
+    Get.bottomSheet(
+      Obx(() => Container(
+        padding: const EdgeInsets.symmetric(
+            vertical: 30, horizontal: 24),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1A1A1A),
+          borderRadius:
+          BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Volume',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () => controller.decreaseVolume(),
+                  child: const Icon(Icons.volume_down_rounded,
+                      color: Colors.white, size: 28),
+                ),
+                Expanded(
+                  child: Slider(
+                    value: controller.volume.value,
+                    min: 0.0,
+                    max: 1.0,
+                    activeColor: const Color(0xFF007BFF),
+                    inactiveColor: Colors.grey.withAlpha(50),
+                    onChanged: (val) {
+                      controller.volume.value = val;
+                      controller.player.setVolume(val);
+                    },
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => controller.increaseVolume(),
+                  child: const Icon(Icons.volume_up_rounded,
+                      color: Colors.white, size: 28),
+                ),
+              ],
+            ),
+            Text(
+              '${(controller.volume.value * 100).toInt()}%',
+              style: const TextStyle(
+                  color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      )),
+    );
   }
 
   // ✅ Timer Modal
@@ -399,8 +503,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   },
                   child: Container(
                     width: double.infinity,
-                    margin:
-                    const EdgeInsets.symmetric(vertical: 5),
+                    margin: const EdgeInsets.symmetric(vertical: 5),
                     padding:
                     const EdgeInsets.symmetric(vertical: 16),
                     decoration: BoxDecoration(
@@ -438,11 +541,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _showSpeedModal() {
     Get.bottomSheet(
       Container(
-        padding:
-        const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+        padding: const EdgeInsets.symmetric(
+            vertical: 24, horizontal: 20),
         decoration: const BoxDecoration(
           color: Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+          borderRadius:
+          BorderRadius.vertical(top: Radius.circular(25)),
         ),
         child: Obx(() => Column(
           mainAxisSize: MainAxisSize.min,
@@ -500,8 +604,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  // ✅ color parameter যোগ করা হয়েছে favorite icon এর জন্য
-  Widget _buildPlayerAction(IconData icon, {Color color = Colors.white}) {
+  Widget _buildPlayerAction(IconData icon,
+      {Color color = Colors.white}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

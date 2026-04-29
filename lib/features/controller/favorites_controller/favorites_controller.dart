@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:urdu_quran/features/player/audio_session_manager.dart';
 import '../../favorite_model/favorite_repsitory.dart';
 import '../../favorite_model/favoritemodel.dart';
 import '../../player/player_screen.dart';
@@ -74,7 +75,14 @@ class FavoritesController extends GetxController {
     if (playingIndex.value == index) {
       await _audioPlayer.pause();
       playingIndex.value = null;
+      AudioSessionManager.unregister(); // ✅
     } else {
+      // ✅ আগের audio বন্ধ করো
+      AudioSessionManager.register(() {
+        _audioPlayer.pause();
+        playingIndex.value = null;
+      });
+
       playingIndex.value = index;
       try {
         await _audioPlayer.setUrl(audioUrl);

@@ -2,12 +2,14 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:urdu_quran/features/player/audio_session_manager.dart';
 import '../../../core/local_storage.dart';
 import '../../favorite_model/favorite_repsitory.dart';
-import '../favorites_controller/favorites_controller.dart'; // ✅ import
+import '../favorites_controller/favorites_controller.dart';
 
 class PlayerController extends GetxController {
   final AudioPlayer player = AudioPlayer();
@@ -25,6 +27,11 @@ class PlayerController extends GetxController {
   var isDownloading = false.obs;
   var downloadProgress = 0.0.obs;
 
+  var volume = 1.0.obs;
+
+  List<Map<String, String>> playlist = [];
+  int currentIndex = 0;
+
   String? currentSuraId;
   final String guestId = 'guest-device-001';
 
@@ -39,6 +46,12 @@ class PlayerController extends GetxController {
     '60 Minutes',
   ];
 
+  void setPlaylist(List<Map<String, String>> list, int index) {
+    playlist = list;
+    currentIndex = index;
+  }
+
+
   Future<void> initAudio(
       String audioUrl,
       String surahName,
@@ -48,6 +61,12 @@ class PlayerController extends GetxController {
     try {
       isLoading.value = true;
       currentSuraId = suraId;
+
+      // ✅ আগের audio বন্ধ করো
+      AudioSessionManager.register(() {
+        player.pause();
+        isPlaying.value = false;
+      });
 
       await player.setUrl(audioUrl);
       await LocalStorage.saveLastPlayed(surahName, reciterName, audioUrl);
@@ -69,6 +88,43 @@ class PlayerController extends GetxController {
     }
   }
 
+  // ✅ Previous Surah
+  Future<void> playPrevious() async {
+    if (playlist.isEmpty || currentIndex <= 0) return;
+    currentIndex--;
+    final item = playlist[currentIndex];
+    await initAudio(
+      item['audioUrl']!,
+      item['surahName']!,
+      item['reciterName']!,
+      suraId: item['suraId'],
+    );
+  }
+
+  // ✅ Next Surah
+  Future<void> playNext() async {
+    if (playlist.isEmpty || currentIndex >= playlist.length - 1) return;
+    currentIndex++;
+    final item = playlist[currentIndex];
+    await initAudio(
+      item['audioUrl']!,
+      item['surahName']!,
+      item['reciterName']!,
+      suraId: item['suraId'],
+    );
+  }
+
+  // ✅ Volume
+  void increaseVolume() {
+    volume.value = (volume.value + 0.1).clamp(0.0, 1.0);
+    player.setVolume(volume.value);
+  }
+
+  void decreaseVolume() {
+    volume.value = (volume.value - 0.1).clamp(0.0, 1.0);
+    player.setVolume(volume.value);
+  }
+
   // ✅ Favorite status check
   Future<void> checkFavoriteStatus(String suraId) async {
     isFavoriteLoading.value = true;
@@ -78,16 +134,14 @@ class PlayerController extends GetxController {
     isFavoriteLoading.value = false;
   }
 
-  // ✅ Favorite toggle — UI সাথে সাথে update + FavoritesController sync
+  // ✅ Favorite toggle
   Future<void> toggleFavorite() async {
     if (currentSuraId == null) return;
     isFavoriteLoading.value = true;
 
     try {
       if (isFavorite.value) {
-        // ✅ আগে UI update
         isFavorite.value = false;
-
         await FavoriteRepository.removeFavorite(
           guestId: guestId,
           suraId: currentSuraId!,
@@ -95,9 +149,7 @@ class PlayerController extends GetxController {
         Get.snackbar('Removed', 'Removed from favorites',
             snackPosition: SnackPosition.BOTTOM);
       } else {
-        // ✅ আগে UI update
         isFavorite.value = true;
-
         await FavoriteRepository.addFavorite(
           guestId: guestId,
           suraId: currentSuraId!,
@@ -106,12 +158,10 @@ class PlayerController extends GetxController {
             snackPosition: SnackPosition.BOTTOM);
       }
 
-      // ✅ FavoritesController active থাকলে sync করো
       if (Get.isRegistered<FavoritesController>()) {
         Get.find<FavoritesController>().fetchFavorites();
       }
     } catch (e) {
-      // ✅ Error হলে আগের state ফিরিয়ে দাও
       isFavorite.value = !isFavorite.value;
       print('❌ Favorite Error: $e');
       Get.snackbar('Error', 'Something went wrong',
@@ -121,6 +171,7 @@ class PlayerController extends GetxController {
     isFavoriteLoading.value = false;
   }
 
+  // ✅ Download
   Future<void> downloadAudio(String surahName, String audioUrl) async {
     if (Platform.isAndroid) {
       final androidInfo = await DeviceInfoPlugin().androidInfo;
@@ -168,8 +219,13 @@ class PlayerController extends GetxController {
       );
 
       isDownloading.value = false;
-      Get.snackbar('Downloaded', '$surahName saved to Downloads',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Downloaded',
+        '$surahName saved to Downloads',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.yellow,
+        colorText: Colors.black,
+      );
     } catch (e) {
       isDownloading.value = false;
       print('❌ Download Error: $e');
@@ -215,6 +271,7 @@ class PlayerController extends GetxController {
 
   @override
   void onClose() {
+    // ✅ permanent: true হলে onClose call হবে না
     player.dispose();
     super.onClose();
   }
