@@ -1,14 +1,34 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:get/get.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../sura_model/sura_model.dart';
 import '../../sura_model/sura_repository.dart';
 
 class ReciterDetailController extends GetxController {
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   var playingIndex = RxnInt();
+  var loadingIndex = RxnInt();
   var suras = <SuraModel>[].obs;
   var isLoading = false.obs;
   var searchQuery = ''.obs;
   String reciterId = '';
+
+  @override
+  void onInit() {
+    super.onInit();
+
+    // ✅ Audio শেষ হলে waveform বন্ধ
+    _audioPlayer.playerStateStream.listen((state) {
+      if (state.processingState == ProcessingState.completed) {
+        playingIndex.value = null;
+      }
+    });
+  }
 
   void init(String id) {
     reciterId = id;
@@ -38,9 +58,79 @@ class ReciterDetailController extends GetxController {
     fetchSuras(reciterId: reciterId, search: value);
   }
 
-  void togglePlay(int index) {
-    playingIndex.value = playingIndex.value == index ? null : index;
+  // ✅ Inline play/pause
+  Future<void> togglePlay(int index, String audioUrl) async {
+    if (playingIndex.value == index) {
+      await _audioPlayer.pause();
+      playingIndex.value = null;
+    } else {
+      playingIndex.value = index;
+      loadingIndex.value = index;
+      try {
+        await _audioPlayer.setUrl(audioUrl);
+        await _audioPlayer.play();
+      } catch (e) {
+        print('❌ Audio Error: $e');
+        playingIndex.value = null;
+      }
+      loadingIndex.value = null;
+    }
   }
 
   bool isPlaying(int index) => playingIndex.value == index;
+
+  // ✅ Download
+  Future<void> downloadAudio(String surahName, String audioUrl) async {
+    if (Platform.isAndroid) {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
+
+      if (sdkInt < 30) {
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          Get.snackbar('Permission Denied', 'Storage permission required',
+              snackPosition: SnackPosition.BOTTOM);
+          return;
+        }
+      } else if (sdkInt < 33) {
+        final status = await Permission.manageExternalStorage.request();
+        if (!status.isGranted) {
+          Get.snackbar('Permission Denied', 'Please allow storage access',
+              snackPosition: SnackPosition.BOTTOM);
+          return;
+        }
+      }
+    }
+
+    try {
+      final httpClient = HttpClient()
+        ..badCertificateCallback = (cert, host, port) => true;
+      final adapter = IOHttpClientAdapter();
+      adapter.createHttpClient = () => httpClient;
+
+      final dio = Dio();
+      dio.httpClientAdapter = adapter;
+
+      final filePath = '/storage/emulated/0/Download/$surahName.mp3';
+      await dio.download(audioUrl, filePath);
+
+      Get.snackbar('Downloaded', '$surahName saved to Downloads',
+          snackPosition: SnackPosition.BOTTOM);
+    } catch (e) {
+      print('❌ Download Error: $e');
+      Get.snackbar('Error', 'Download failed',
+          snackPosition: SnackPosition.BOTTOM);
+    }
+  }
+
+  void stopAndClear() {
+    _audioPlayer.pause();
+    playingIndex.value = null;
+  }
+
+  @override
+  void onClose() {
+    _audioPlayer.dispose();
+    super.onClose();
+  }
 }

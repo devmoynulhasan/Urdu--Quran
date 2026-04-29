@@ -4,6 +4,7 @@ import 'package:urdu_quran/features/home/reciterdata_screen.dart';
 import '../../resource/app_images/app_imaeg.dart';
 import '../controller/homecontoller/homescreen_controller.dart';
 import '../favorites/favorites_screen.dart';
+import 'allreciters_screen.dart';
 
 class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
   const HomeScreen({super.key});
@@ -190,12 +191,10 @@ class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
                       ),
                       if (controller.searchQuery.value.isEmpty)
                         TextButton(
-                          onPressed: () {},
+                          onPressed: () => Get.to(() => const AllRecitersScreen()),
                           child: const Text(
                             'See All',
-                            style: TextStyle(
-                                color: Color(0xFF007BFF),
-                                fontSize: 20),
+                            style: TextStyle(color: Color(0xFF007BFF), fontSize: 20),
                           ),
                         ),
                     ],

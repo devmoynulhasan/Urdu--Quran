@@ -24,7 +24,6 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // ✅ initState এ safe initialize
     controller = Get.put(
       ReciterDetailController(),
       tag: widget.reciterId,
@@ -96,9 +95,10 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                 ),
                 child: TextField(
                   controller: searchController,
-                  style: const TextStyle(fontSize: 18, color: Colors.white),
-                  onChanged: (value) =>
-                      controller.onSearchChanged(value, widget.reciterId),
+                  style: const TextStyle(
+                      fontSize: 18, color: Colors.white),
+                  onChanged: (value) => controller.onSearchChanged(
+                      value, widget.reciterId),
                   decoration: InputDecoration(
                     hintText: widget.reciterName,
                     hintStyle: const TextStyle(
@@ -131,108 +131,119 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                 ),
               )
                   : ListView.builder(
-                padding:
-                const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                padding: const EdgeInsets.fromLTRB(
+                    16, 0, 16, 100),
                 itemCount: controller.filteredSuras.length,
                 itemBuilder: (context, index) {
-                  final sura = controller.filteredSuras[index];
-                  final isPlaying = controller.isPlaying(index);
+                  final sura =
+                  controller.filteredSuras[index];
 
-                  return GestureDetector(
-                    // ✅ পুরো card — PlayerScreen এ যাবে
-                    onTap: () {
-                      Get.to(() => PlayerScreen(
-                        surahName: '${sura.suraNumber}. ${sura.title}',
-                        reciterName: widget.reciterName,
-                        audioUrl: sura.audioUrl,
-                        suraId: sura.id, // ✅ এটা add করো
-                      ));
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 18, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1A1A1A),
-                        borderRadius: BorderRadius.circular(15),
-                        border: isPlaying
-                            ? Border.all(
-                            color: const Color(0xFF007BFF),
-                            width: 1.5)
-                            : null,
-                      ),
-                      child: Row(
-                        children: [
-                          // ✅ Surah Name
-                          Text(
-                            '${sura.suraNumber}. ${sura.title}',
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 18),
-                          ),
-                          const Spacer(),
+                  return Obx(() {
+                    final isPlaying =
+                    controller.isPlaying(index);
+                    final isLoadingThis =
+                        controller.loadingIndex.value ==
+                            index;
 
-                          // ✅ Download — শুধু download
-                          GestureDetector(
-                            onTap: () {
-                              // TODO: download logic
-                            },
-                            child: const Icon(
-                              Icons.download_outlined,
-                              color: Colors.grey,
-                              size: 26,
+                    return GestureDetector(
+                      // ✅ Card tap — PlayerScreen
+                      onTap: () {
+                        controller.stopAndClear();
+                        Get.to(() => PlayerScreen(
+                          surahName:
+                          '${sura.suraNumber}. ${sura.title}',
+                          reciterName: widget.reciterName,
+                          audioUrl: sura.audioUrl,
+                          suraId: sura.id,
+                        ));
+                      },
+                      child: Container(
+                        margin:
+                        const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 18, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A1A1A),
+                          borderRadius:
+                          BorderRadius.circular(15),
+                          border: isPlaying
+                              ? Border.all(
+                              color:
+                              const Color(0xFF007BFF),
+                              width: 1.5)
+                              : null,
+                        ),
+                        child: Row(
+                          children: [
+                            // ✅ Surah Name
+                            Text(
+                              '${sura.suraNumber}. ${sura.title}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18),
                             ),
-                          ),
-                          const SizedBox(width: 14),
+                            const Spacer(),
 
-                          // ✅ Play — inline waveform toggle
-                          GestureDetector(
-                            onTap: () =>
-                                controller.togglePlay(index),
-                            child: isPlaying
-                            // 🎵 Waveform
-                                ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: List.generate(4, (i) {
-                                return Container(
-                                  margin: const EdgeInsets
-                                      .symmetric(
-                                      horizontal: 2),
-                                  width: 4,
-                                  height: [
-                                    20.0,
-                                    35.0,
-                                    25.0,
-                                    15.0
-                                  ][i],
-                                  decoration: BoxDecoration(
-                                    color: const Color(
-                                        0xFF007BFF),
-                                    borderRadius:
-                                    BorderRadius.circular(
-                                        10),
+                            // ✅ Download
+                            GestureDetector(
+                              onTap: () =>
+                                  controller.downloadAudio(
+                                    '${sura.suraNumber}_${sura.title}',
+                                    sura.audioUrl,
                                   ),
-                                );
-                              }),
-                            )
-                            // ▶ Play Button
-                                : Container(
-                              padding:
-                              const EdgeInsets.all(10),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF007BFF),
-                                shape: BoxShape.circle,
-                              ),
                               child: const Icon(
-                                Icons.play_arrow,
-                                color: Colors.white,
+                                Icons.download_outlined,
+                                color: Colors.grey,
                                 size: 26,
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 14),
+
+                            // ✅ Play / Loading / Waveform
+                            GestureDetector(
+                              onTap: () =>
+                                  controller.togglePlay(
+                                      index, sura.audioUrl),
+                              child: isLoadingThis
+                                  ? const SizedBox(
+                                width: 44,
+                                height: 44,
+                                child: Center(
+                                  child:
+                                  CircularProgressIndicator(
+                                    color: Color(
+                                        0xFF007BFF),
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                                  : isPlaying
+                              // ✅ Animated waveform
+                                  ? const AnimatedWaveform()
+                              // ✅ Play button
+                                  : Container(
+                                padding:
+                                const EdgeInsets
+                                    .all(10),
+                                decoration:
+                                const BoxDecoration(
+                                  color: Color(
+                                      0xFF007BFF),
+                                  shape:
+                                  BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow,
+                                  color: Colors.white,
+                                  size: 26,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  });
                 },
               ),
             ),
@@ -284,5 +295,62 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
         ),
       ),
     ));
+  }
+}
+
+// ✅ Animated Waveform Widget
+class AnimatedWaveform extends StatefulWidget {
+  const AnimatedWaveform({super.key});
+
+  @override
+  State<AnimatedWaveform> createState() => _AnimatedWaveformState();
+}
+
+class _AnimatedWaveformState extends State<AnimatedWaveform>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final List<double> heights = [
+          8 + (_controller.value * 27),
+          35 - (_controller.value * 15),
+          10 + (_controller.value * 20),
+          20 - (_controller.value * 14),
+        ];
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(4, (index) {
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2.0),
+              width: 4,
+              height: heights[index],
+              decoration: BoxDecoration(
+                color: const Color(0xFF007BFF),
+                borderRadius: BorderRadius.circular(10),
+              ),
+            );
+          }),
+        );
+      },
+    );
   }
 }

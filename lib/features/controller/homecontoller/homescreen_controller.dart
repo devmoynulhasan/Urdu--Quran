@@ -9,11 +9,12 @@ class HomeController extends GetxController {
   var selectedReciterIndex = RxnInt();
   var selectedNavIndex = 0.obs;
   var searchQuery = ''.obs;
+  var showAllReciters = false.obs; // ✅ আছে
 
   // ✅ Last played
   var lastPlayedSurah = ''.obs;
   var lastPlayedReciter = ''.obs;
-  var lastPlayedAudioUrl = ''.obs; // ✅ audioUrl যোগ
+  var lastPlayedAudioUrl = ''.obs;
 
   // ✅ API reciters
   var reciters = <ReciterModel>[].obs;
@@ -26,7 +27,6 @@ class HomeController extends GetxController {
     fetchReciters();
   }
 
-  // ✅ API call
   Future<void> fetchReciters({String search = ''}) async {
     isLoading.value = true;
     final result = await ReciterRepository.getReciters(search: search);
@@ -34,7 +34,6 @@ class HomeController extends GetxController {
     isLoading.value = false;
   }
 
-  // ✅ LocalStorage থেকে load
   void _loadLastPlayed() {
     lastPlayedSurah.value = LocalStorage.getLastPlayed() ?? '';
     lastPlayedReciter.value = LocalStorage.getLastPlayedReciter() ?? '';
@@ -47,7 +46,6 @@ class HomeController extends GetxController {
     lastPlayedAudioUrl.value = LocalStorage.getLastPlayedAudioUrl() ?? '';
   }
 
-  // ✅ Search
   void onSearchChanged(String value) {
     searchQuery.value = value;
     fetchReciters(search: value);
@@ -58,18 +56,22 @@ class HomeController extends GetxController {
     fetchReciters();
   }
 
+  // ✅ See All toggle
+  void toggleSeeAll() {
+    showAllReciters.value = !showAllReciters.value;
+  }
+
   List<ReciterModel> get filteredReciters => reciters;
 
   void selectReciter(int index) => selectedReciterIndex.value = index;
   void changeNavIndex(int index) => selectedNavIndex.value = index;
 
-  // ✅ Continue Listening play — audioUrl সহ
   void playLastPlayed() async {
     if (lastPlayedSurah.value.isNotEmpty) {
       await Get.to(() => PlayerScreen(
         surahName: lastPlayedSurah.value,
         reciterName: lastPlayedReciter.value,
-        audioUrl: lastPlayedAudioUrl.value, // ✅
+        audioUrl: lastPlayedAudioUrl.value,
       ));
       reloadLastPlayed();
     }
