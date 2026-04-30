@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
@@ -26,8 +27,13 @@ class PlayerController extends GetxController {
 
   var isDownloading = false.obs;
   var downloadProgress = 0.0.obs;
+  var isRepeat = false.obs;
 
   var volume = 1.0.obs;
+
+  // ✅ Timer variables
+  var remainingSeconds = 0.obs;
+  Timer? _sleepTimer;
 
   List<Map<String, String>> playlist = [];
   int currentIndex = 0;
@@ -38,6 +44,7 @@ class PlayerController extends GetxController {
   final List<String> speeds = ['x 0.7', 'Normal', 'x 1.5', 'x 2'];
   final List<String> timerOptions = [
     'Never',
+    '1 Minutes'
     '5 Minutes',
     '10 Minutes',
     '15 Minutes',
@@ -51,18 +58,17 @@ class PlayerController extends GetxController {
     currentIndex = index;
   }
 
-
   Future<void> initAudio(
       String audioUrl,
       String surahName,
       String reciterName, {
         String? suraId,
+        Duration initialPosition = Duration.zero,
       }) async {
     try {
       isLoading.value = true;
       currentSuraId = suraId;
 
-      // ✅ আগের audio বন্ধ করো
       AudioSessionManager.register(() {
         player.pause();
         isPlaying.value = false;
@@ -71,10 +77,28 @@ class PlayerController extends GetxController {
       await player.setUrl(audioUrl);
       await LocalStorage.saveLastPlayed(surahName, reciterName, audioUrl);
 
+      if (initialPosition > Duration.zero) {
+        await player.seek(initialPosition);
+      }
+
       player.positionStream.listen((pos) => position.value = pos);
-      player.durationStream
-          .listen((dur) => duration.value = dur ?? Duration.zero);
+      player.durationStream.listen((dur) => duration.value = dur ?? Duration.zero);
       player.playingStream.listen((playing) => isPlaying.value = playing);
+
+      // ✅ এটা যোগ করো — audio শেষ হলে button off হবে
+      player.playerStateStream.listen((state) {
+        if (state.processingState == ProcessingState.completed) {
+          if (isRepeat.value) {
+            player.seek(Duration.zero);
+            player.play();
+          } else {
+            isPlaying.value = false;
+            position.value = Duration.zero;
+            player.seek(Duration.zero);
+            player.pause();
+          }
+        }
+      });
 
       isLoading.value = false;
       player.play();
@@ -242,6 +266,10 @@ class PlayerController extends GetxController {
     }
   }
 
+  void toggleRepeat() {
+    isRepeat.value = !isRepeat.value;
+  }
+
   void seekTo(double value) {
     player.seek(Duration(seconds: value.toInt()));
   }
@@ -258,8 +286,42 @@ class PlayerController extends GetxController {
     currentSpeed.value = speed == 'Normal' ? 'x1' : speed;
   }
 
+  // ✅ Active Timer with countdown
   void setTimer(String timer) {
+    // Cancel any existing timer
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
     selectedTimer.value = timer;
+    remainingSeconds.value = 0;
+
+    if (timer == 'Never') return;
+
+    // Extract minutes from option string e.g. "5 Minutes" → 5
+    final minutes = int.tryParse(timer.split(' ')[0]) ?? 0;
+    if (minutes <= 0) return;
+
+    remainingSeconds.value = minutes * 60;
+
+    // Countdown every second
+    _sleepTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (remainingSeconds.value <= 1) {
+        player.pause();
+        isPlaying.value = false;
+        selectedTimer.value = 'Never';
+        remainingSeconds.value = 0;
+        t.cancel();
+        Get.snackbar(
+          'Timer Ended',
+          'Player has been stopped',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: const Color(0xFF007BFF),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      } else {
+        remainingSeconds.value--;
+      }
+    });
   }
 
   String formatDuration(Duration d) {
@@ -271,7 +333,7 @@ class PlayerController extends GetxController {
 
   @override
   void onClose() {
-    // ✅ permanent: true হলে onClose call হবে না
+    _sleepTimer?.cancel(); // ✅ Timer cancel on close
     player.dispose();
     super.onClose();
   }

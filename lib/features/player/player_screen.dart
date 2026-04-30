@@ -10,6 +10,7 @@ class PlayerScreen extends StatefulWidget {
   final String? suraId;
   final List<Map<String, String>> playlist;
   final int playlistIndex;
+  final Duration initialPosition; // ✅ New
 
   const PlayerScreen({
     super.key,
@@ -19,8 +20,8 @@ class PlayerScreen extends StatefulWidget {
     this.suraId,
     this.playlist = const [],
     this.playlistIndex = 0,
+    this.initialPosition = Duration.zero, // ✅ default zero
   });
-
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
 }
@@ -31,23 +32,27 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
-    controller = Get.put(
-      PlayerController(),
-      permanent: true,
-    );
+    controller = Get.put(PlayerController(), permanent: true);
     controller.setPlaylist(widget.playlist, widget.playlistIndex);
     controller.initAudio(
       widget.audioUrl,
       widget.surahName,
       widget.reciterName,
       suraId: widget.suraId,
+      initialPosition: widget.initialPosition, // ✅
     );
   }
 
   @override
   void dispose() {
-    // ✅ Get.delete() নেই — audio চলতে থাকবে
     super.dispose();
+  }
+
+  // ✅ Format remaining seconds → "04:32"
+  String _formatRemaining(int seconds) {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 
   @override
@@ -112,6 +117,38 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               color: Colors.white, size: 24),
                         ),
                       ),
+
+                      // ✅ Active timer badge in top bar
+                      if (controller.remainingSeconds.value > 0) ...[
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF007BFF).withAlpha(40),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: const Color(0xFF007BFF), width: 1),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.access_time,
+                                  color: Color(0xFF007BFF), size: 14),
+                              const SizedBox(width: 5),
+                              Text(
+                                _formatRemaining(
+                                    controller.remainingSeconds.value),
+                                style: const TextStyle(
+                                  color: Color(0xFF007BFF),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -142,17 +179,50 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
                 // ✅ Actions Row
                 Padding(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 30),
+                  padding: const EdgeInsets.symmetric(horizontal: 30),
                   child: Row(
-                    mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Timer
+
+                      // ✅ Timer Button — shows countdown badge when active
                       GestureDetector(
                         onTap: () => _showTimerModal(),
-                        child:
-                        _buildPlayerAction(Icons.access_time),
+                        child: controller.remainingSeconds.value > 0
+                            ? Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            _buildPlayerAction(
+                              Icons.access_time,
+                              color: const Color(0xFF007BFF),
+                            ),
+                            Positioned(
+                              bottom: -4,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF007BFF),
+                                    borderRadius:
+                                    BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    _formatRemaining(
+                                        controller.remainingSeconds.value),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                            : _buildPlayerAction(Icons.access_time),
                       ),
 
                       // Speed
@@ -180,8 +250,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               CircularProgressIndicator(
                                 value: controller
                                     .downloadProgress.value,
-                                color:
-                                const Color(0xFF007BFF),
+                                color: const Color(0xFF007BFF),
                                 strokeWidth: 2,
                               ),
                               Text(
@@ -237,40 +306,33 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       color: Color(0xFF007BFF))
                 else
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       children: [
                         SliderTheme(
                           data: SliderTheme.of(context).copyWith(
                             trackHeight: 2,
-                            thumbShape:
-                            const RoundSliderThumbShape(
+                            thumbShape: const RoundSliderThumbShape(
                                 enabledThumbRadius: 6),
-                            overlayShape:
-                            const RoundSliderOverlayShape(
+                            overlayShape: const RoundSliderOverlayShape(
                                 overlayRadius: 14),
-                            activeTrackColor:
-                            const Color(0xFF007BFF),
+                            activeTrackColor: const Color(0xFF007BFF),
                             inactiveTrackColor:
                             Colors.grey.withAlpha(50),
                             thumbColor: const Color(0xFF007BFF),
                           ),
                           child: Slider(
-                            value: controller
-                                .position.value.inSeconds
+                            value: controller.position.value.inSeconds
                                 .toDouble()
                                 .clamp(
                               0,
-                              controller
-                                  .duration.value.inSeconds
+                              controller.duration.value.inSeconds
                                   .toDouble(),
                             ),
                             max: controller.duration.value.inSeconds
                                 .toDouble() >
                                 0
-                                ? controller
-                                .duration.value.inSeconds
+                                ? controller.duration.value.inSeconds
                                 .toDouble()
                                 : 1,
                             onChanged: controller.seekTo,
@@ -287,15 +349,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 controller.formatDuration(
                                     controller.position.value),
                                 style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 14),
+                                    color: Colors.grey, fontSize: 14),
                               ),
                               Text(
                                 controller.formatDuration(
                                     controller.duration.value),
                                 style: const TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 14),
+                                    color: Colors.grey, fontSize: 14),
                               ),
                             ],
                           ),
@@ -310,20 +370,23 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20, vertical: 40),
                   child: Row(
-                    mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // ✅ Repeat
                       IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.repeat,
-                            color: Colors.white, size: 28),
+                        onPressed: () => controller.toggleRepeat(),
+                        icon: Icon(
+                          Icons.repeat,
+                          color: controller.isRepeat.value
+                              ? const Color(0xFF007BFF)  // active হলে blue
+                              : Colors.white,
+                          size: 28,
+                        ),
                       ),
 
                       // ✅ Previous
                       IconButton(
-                        onPressed: () =>
-                            controller.playPrevious(),
+                        onPressed: () => controller.playPrevious(),
                         icon: Icon(
                           Icons.skip_previous_rounded,
                           color: controller.playlist.isEmpty ||
@@ -343,8 +406,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                                color: const Color(0xFF007BFF),
-                                width: 2),
+                                color: const Color(0xFF007BFF), width: 2),
                           ),
                           child: Icon(
                             controller.isPlaying.value
@@ -399,12 +461,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _showVolumeModal() {
     Get.bottomSheet(
       Obx(() => Container(
-        padding: const EdgeInsets.symmetric(
-            vertical: 30, horizontal: 24),
+        padding:
+        const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
         decoration: const BoxDecoration(
           color: Color(0xFF1A1A1A),
-          borderRadius:
-          BorderRadius.vertical(top: Radius.circular(25)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -447,8 +508,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
             Text(
               '${(controller.volume.value * 100).toInt()}%',
-              style: const TextStyle(
-                  color: Colors.grey, fontSize: 14),
+              style:
+              const TextStyle(color: Colors.grey, fontSize: 14),
             ),
             const SizedBox(height: 10),
           ],
@@ -462,12 +523,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
     Get.bottomSheet(
       Obx(() => SingleChildScrollView(
         child: Container(
-          padding: const EdgeInsets.symmetric(
-              vertical: 24, horizontal: 20),
+          padding:
+          const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
           decoration: const BoxDecoration(
             color: Color(0xFF1A1A1A),
-            borderRadius:
-            BorderRadius.vertical(top: Radius.circular(25)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -492,6 +552,28 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+
+              // ✅ Show live countdown if timer is active
+              if (controller.remainingSeconds.value > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.access_time,
+                          color: Color(0xFF007BFF), size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Stopping in: ${_formatRemaining(controller.remainingSeconds.value)}',
+                        style: const TextStyle(
+                          color: Color(0xFF007BFF),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               const SizedBox(height: 16),
               ...controller.timerOptions.map((option) {
                 bool isSelected =
@@ -541,12 +623,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _showSpeedModal() {
     Get.bottomSheet(
       Container(
-        padding: const EdgeInsets.symmetric(
-            vertical: 24, horizontal: 20),
+        padding:
+        const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
         decoration: const BoxDecoration(
           color: Color(0xFF1A1A1A),
-          borderRadius:
-          BorderRadius.vertical(top: Radius.circular(25)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
         ),
         child: Obx(() => Column(
           mainAxisSize: MainAxisSize.min,
@@ -571,8 +652,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 },
                 child: Container(
                   width: double.infinity,
-                  margin:
-                  const EdgeInsets.symmetric(vertical: 8),
+                  margin: const EdgeInsets.symmetric(vertical: 8),
                   padding:
                   const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(

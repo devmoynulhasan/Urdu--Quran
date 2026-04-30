@@ -155,6 +155,14 @@ class ReciterDetailController extends GetxController {
     }
   }
 
+  Duration stopAndGetPosition(int index) {
+    final pos = isPlaying(index) ? _audioPlayer.position : Duration.zero;
+    _audioPlayer.pause();
+    playingIndex.value = null;
+    return pos;
+  }
+
+// পুরনো stopAndClear() রেখে দাও (অন্য জায়গায় use হতে পারে)
   void stopAndClear() {
     _audioPlayer.pause();
     playingIndex.value = null;

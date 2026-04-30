@@ -97,6 +97,8 @@ class FavoritesController extends GetxController {
   bool isPlaying(int index) => playingIndex.value == index;
 
   void playFavorite(FavoriteModel favorite) {
+    // ✅ position নাও
+    final pos = _audioPlayer.position;
     _audioPlayer.pause();
     playingIndex.value = null;
 
@@ -105,6 +107,7 @@ class FavoritesController extends GetxController {
       reciterName: favorite.reciterName,
       audioUrl: favorite.audioUrl,
       suraId: favorite.id,
+      initialPosition: pos, // ✅
     ))?.then((_) {
       fetchFavorites();
     });

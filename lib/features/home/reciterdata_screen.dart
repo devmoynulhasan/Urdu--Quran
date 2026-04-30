@@ -144,7 +144,9 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
 
                     return GestureDetector(
                       onTap: () {
-                        controller.stopAndClear();
+                        // ✅ আগে position নাও তারপর stop করো
+                        final position = controller.stopAndGetPosition(index);
+
                         final playlist = controller.filteredSuras.map((s) => {
                           'audioUrl': s.audioUrl,
                           'surahName': '${s.suraNumber}. ${s.title}',
@@ -159,6 +161,7 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                           suraId: sura.id,
                           playlist: playlist,
                           playlistIndex: index,
+                          initialPosition: position, // ✅ pass করো
                         ));
                       },
                       child: Container(
