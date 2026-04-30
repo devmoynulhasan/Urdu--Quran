@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:urdu_quran/features/home/reciterdata_screen.dart';
 import '../../resource/app_images/app_imaeg.dart';
 import '../controller/homecontoller/homescreen_controller.dart';
-import '../favorites/favorites_screen.dart';
+import '../favorites/favorites_screen.dart' hide AnimatedWaveform;
 import 'allreciters_screen.dart';
 
 class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
@@ -129,7 +129,7 @@ class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
 
                     // ✅ Last played surah দেখাবে
                         : GestureDetector(
-                      onTap: controller.playLastPlayed, // ✅ click করলে player খুলবে
+                      onTap: controller.playLastPlayed,
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -142,30 +142,72 @@ class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  controller.lastPlayedSurah.value, // ✅ Surah name
-                                  style: const TextStyle(
-                                      color: Colors.white, fontSize: 20),
+                                  controller.lastPlayedSurah.value,
+                                  style: const TextStyle(color: Colors.white, fontSize: 20),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  controller.lastPlayedReciter.value, // ✅ Reciter name
-                                  style: const TextStyle(
-                                      color: Colors.grey, fontSize: 14),
+                                  controller.lastPlayedReciter.value,
+                                  style: const TextStyle(color: Colors.grey, fontSize: 14),
                                 ),
                               ],
                             ),
                             const Spacer(),
-                            const Icon(Icons.download_outlined,
-                                color: Colors.grey, size: 28),
+
+                            // ✅ Download button
+                            GestureDetector(
+                              onTap: controller.isDownloading.value
+                                  ? null
+                                  : () => controller.downloadLastPlayed(),
+                              child: Obx(() => controller.isDownloading.value
+                                  ? SizedBox(
+                                width: 36,
+                                height: 36,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      value: controller.downloadProgress.value,
+                                      color: Colors.yellow,
+                                      strokeWidth: 2,
+                                    ),
+                                    Text(
+                                      '${(controller.downloadProgress.value * 100).toInt()}%',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                                  : const Icon(
+                                Icons.download_outlined,
+                                color: Colors.grey,
+                                size: 28,
+                              )),
+                            ),
+
                             const SizedBox(width: 15),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF007BFF),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.play_arrow,
-                                  color: Colors.white, size: 28),
+
+                            // ✅ Play button
+                            // ✅ Play / Waveform
+                            GestureDetector(
+                              onTap: () => controller.toggleLastPlayed(),
+                              child: Obx(() => controller.isLastPlayedPlaying.value
+                                  ? const AnimatedWaveform() // ✅ playing হলে waveform
+                                  : Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF007BFF),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              )),
                             ),
                           ],
                         ),
