@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:urdu_quran/features/player/shared_audio_satatus.dart';
 import 'package:urdu_quran/resource/app_images/app_imaeg.dart';
 import '../controller/playercontroller/playerscreen_controller.dart';
 
@@ -32,6 +33,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
+    // ✅ PostFrameCallback এ করো
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SharedAudioState.to.isPlayerScreenOpen.value = true;
+    });
     controller = Get.put(PlayerController(), permanent: true);
     controller.setPlaylist(widget.playlist, widget.playlistIndex);
     controller.initAudio(
@@ -39,12 +44,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
       widget.surahName,
       widget.reciterName,
       suraId: widget.suraId,
-      initialPosition: widget.initialPosition, // ✅
+      initialPosition: widget.initialPosition,
     );
   }
 
   @override
   void dispose() {
+    Future.microtask(() {
+      SharedAudioState.to.isPlayerScreenOpen.value = false;
+    });
     super.dispose();
   }
 

@@ -35,18 +35,19 @@ class MyApp extends StatelessWidget {
       home: const Splashscreen(),
 
       // ✅ সব screen এ mini player দেখাবে
-      builder: (context, child) {
-        return Stack(
-          children: [
-            child!,
-            Positioned(
-              bottom: 100,
-              left: 0,
-              right: 0,
-              child: const MiniPlayerWidget(),
-            ),
-          ],
-        );
+        builder: (context, child) {
+          return Stack(
+            children: [
+              child!,
+              // ✅ Obx নেই — MiniPlayerWidget নিজেই hide/show handle করবে
+              const Positioned(
+                bottom: 100,
+                left: 0,
+                right: 0,
+                child: MiniPlayerWidget(),
+              ),
+            ],
+          );
       },
     );
   }

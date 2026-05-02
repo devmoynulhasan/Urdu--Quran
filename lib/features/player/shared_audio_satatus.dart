@@ -6,6 +6,7 @@ class SharedAudioState extends GetxService {
   var lastPlayedSurah = ''.obs;
   var lastPlayedReciter = ''.obs;
   var lastPlayedAudioUrl = ''.obs;
+  var isPlayerScreenOpen = false.obs;
 
   void updateLastPlayed({
     required String surahName,

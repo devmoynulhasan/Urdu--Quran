@@ -13,6 +13,8 @@ class MiniPlayerWidget extends StatelessWidget {
     return Obx(() {
       final state = SharedAudioState.to;
 
+      if (state.isPlayerScreenOpen.value) return const SizedBox.shrink();
+
       if (state.lastPlayedSurah.value.isEmpty) return const SizedBox.shrink();
 
       final player = GlobalAudioManager.to.player;
