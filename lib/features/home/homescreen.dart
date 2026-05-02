@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:urdu_quran/features/home/reciterdata_screen.dart';
+import 'package:urdu_quran/features/player/shared_audio_satatus.dart';
 import '../../resource/app_images/app_imaeg.dart';
 import '../controller/homecontoller/homescreen_controller.dart';
 import '../favorites/favorites_screen.dart' hide AnimatedWaveform;
@@ -106,7 +107,7 @@ class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
                     const SizedBox(height: 15),
 
                     // ✅ Last played surah আছে কিনা check
-                    Obx(() => controller.lastPlayedSurah.value.isEmpty
+                    Obx(() => SharedAudioState.to.lastPlayedSurah.value.isEmpty
 
                     // ❌ কোনো surah play হয়নি
                         ? Container(
@@ -142,19 +143,19 @@ class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  controller.lastPlayedSurah.value,
+                                  SharedAudioState.to.lastPlayedSurah.value, // ✅
                                   style: const TextStyle(color: Colors.white, fontSize: 20),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  controller.lastPlayedReciter.value,
+                                  SharedAudioState.to.lastPlayedReciter.value, // ✅
                                   style: const TextStyle(color: Colors.grey, fontSize: 14),
                                 ),
                               ],
                             ),
                             const Spacer(),
 
-                            // ✅ Download button
+                            // ✅ Download button (আগের মতো)
                             GestureDetector(
                               onTap: controller.isDownloading.value
                                   ? null
@@ -190,12 +191,11 @@ class HomeScreen extends StatelessWidget {  // ✅ StatelessWidget
 
                             const SizedBox(width: 15),
 
-                            // ✅ Play button
-                            // ✅ Play / Waveform
+                            // ✅ Play / Waveform (আগের মতো)
                             GestureDetector(
                               onTap: () => controller.toggleLastPlayed(),
                               child: Obx(() => controller.isLastPlayedPlaying.value
-                                  ? const AnimatedWaveform() // ✅ playing হলে waveform
+                                  ? const AnimatedWaveform()
                                   : Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: const BoxDecoration(

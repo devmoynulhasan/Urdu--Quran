@@ -20,6 +20,7 @@ class ReciterDetailScreen extends StatefulWidget {
 class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
   late ReciterDetailController controller;
   final TextEditingController searchController = TextEditingController();
+  bool _isSearching = false; // ✅
 
   @override
   void initState() {
@@ -29,13 +30,12 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
       tag: widget.reciterId,
       permanent: true,
     );
-    controller.init(widget.reciterId);
+    controller.init(widget.reciterId, widget.reciterName);
   }
 
   @override
   void dispose() {
     searchController.dispose();
-    // ✅ Get.delete() নেই — audio চলতে থাকবে
     super.dispose();
   }
 
@@ -46,14 +46,24 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
       body: SafeArea(
         child: Column(
           children: [
+
             // ✅ Top Bar
             Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () => Get.back(),
+                    onTap: () {
+                      if (_isSearching) {
+                        setState(() {
+                          _isSearching = false;
+                          searchController.clear();
+                          controller.onSearchChanged('', widget.reciterId);
+                        });
+                      } else {
+                        Get.back();
+                      }
+                    },
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
@@ -68,51 +78,68 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                     ),
                   ),
                   const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1A1A1A),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.search,
-                      color: Colors.white,
-                      size: 22,
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => _isSearching = true);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1A1A),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.search,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-            // ✅ Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A1A),
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                      color: const Color(0xFF007BFF), width: 1.5),
+            // ✅ Search bar অথবা Reciter name
+            if (_isSearching)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A1A),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: const Color(0xFF007BFF), width: 1.5),
+                  ),
+                  child: TextField(
+                    controller: searchController,
+                    autofocus: true,
+                    style: const TextStyle(fontSize: 18, color: Colors.white),
+                    onChanged: (value) => controller.onSearchChanged(value, widget.reciterId),
+                    decoration: const InputDecoration(
+                      hintText: 'Search surah...',
+                      hintStyle: TextStyle(color: Colors.grey, fontSize: 18),
+                      prefixIcon: Icon(Icons.search, color: Colors.grey, size: 24),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 18),
+                    ),
+                  ),
                 ),
-                child: TextField(
-                  controller: searchController,
-                  style: const TextStyle(
-                      fontSize: 18, color: Colors.white),
-                  onChanged: (value) => controller.onSearchChanged(
-                      value, widget.reciterId),
-                  decoration: InputDecoration(
-                    hintText: widget.reciterName,
-                    hintStyle: const TextStyle(
-                        color: Colors.white, fontSize: 18),
-                    prefixIcon: const Icon(Icons.search,
-                        color: Colors.grey, size: 24),
-                    border: InputBorder.none,
-                    contentPadding:
-                    const EdgeInsets.symmetric(vertical: 18),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A1A),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Text(
+                    widget.reciterName,
+                    style: const TextStyle(color: Colors.white, fontSize: 18),
                   ),
                 ),
               ),
-            ),
 
             const SizedBox(height: 16),
 
@@ -120,31 +147,26 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
             Expanded(
               child: controller.isLoading.value
                   ? const Center(
-                child: CircularProgressIndicator(
-                    color: Color(0xFF007BFF)),
+                child: CircularProgressIndicator(color: Color(0xFF007BFF)),
               )
                   : controller.filteredSuras.isEmpty
                   ? const Center(
                 child: Text(
                   'No surah found',
-                  style: TextStyle(
-                      color: Colors.grey, fontSize: 18),
+                  style: TextStyle(color: Colors.grey, fontSize: 18),
                 ),
               )
                   : ListView.builder(
-                padding: const EdgeInsets.fromLTRB(
-                    16, 0, 16, 100),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                 itemCount: controller.filteredSuras.length,
                 itemBuilder: (context, index) {
                   final sura = controller.filteredSuras[index];
 
                   return Obx(() {
                     final isPlaying = controller.isPlaying(index);
-                    // ✅ isLoadingThis বাদ
 
                     return GestureDetector(
                       onTap: () {
-                        // ✅ আগে position নাও তারপর stop করো
                         final position = controller.stopAndGetPosition(index);
 
                         final playlist = controller.filteredSuras.map((s) => {
@@ -161,7 +183,7 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                           suraId: sura.id,
                           playlist: playlist,
                           playlistIndex: index,
-                          initialPosition: position, // ✅ pass করো
+                          initialPosition: position,
                         ));
                       },
                       child: Container(
@@ -190,7 +212,8 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                               ),
                               child: Obx(() =>
                               controller.isDownloading.value &&
-                                  controller.downloadingName.value == '${sura.suraNumber}_${sura.title}'
+                                  controller.downloadingName.value ==
+                                      '${sura.suraNumber}_${sura.title}'
                                   ? SizedBox(
                                 width: 36,
                                 height: 36,
@@ -221,7 +244,7 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                             ),
                             const SizedBox(width: 14),
 
-                            // ✅ Play / Waveform — loadingThis বাদ
+                            // ✅ Play / Waveform
                             GestureDetector(
                               onTap: () => controller.togglePlay(index, sura.audioUrl),
                               child: isPlaying
@@ -258,8 +281,7 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFF1A1A1A),
                 borderRadius: BorderRadius.circular(40),

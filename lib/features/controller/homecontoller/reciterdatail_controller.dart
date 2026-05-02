@@ -6,12 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:urdu_quran/features/player/audio_session_manager.dart';
+import 'package:urdu_quran/features/player/global_audio_manager.dart';
+import 'package:urdu_quran/features/player/shared_audio_satatus.dart';
 import '../../sura_model/sura_model.dart';
 import '../../sura_model/sura_repository.dart';
 
 class ReciterDetailController extends GetxController {
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  // ✅ GlobalAudioManager থেকে shared player নাও
+  AudioPlayer get _audioPlayer => GlobalAudioManager.to.player;
 
   var playingIndex = RxnInt();
   var suras = <SuraModel>[].obs;
@@ -20,22 +22,30 @@ class ReciterDetailController extends GetxController {
   var isDownloading = false.obs;
   var downloadProgress = 0.0.obs;
   var downloadingName = ''.obs;
+
   String reciterId = '';
+  String reciterName = '';
+
+  // controllerId unique রাখার জন্য reciterId ব্যবহার করবো
+  String get _controllerId => 'reciter_$reciterId';
 
   @override
   void onInit() {
     super.onInit();
 
-    // ✅ Audio শেষ হলে waveform বন্ধ
     _audioPlayer.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
-        playingIndex.value = null;
+        // শুধু তখনই null করো যখন এই controller active
+        if (GlobalAudioManager.to.activeControllerId == _controllerId) {
+          playingIndex.value = null;
+        }
       }
     });
   }
 
-  void init(String id) {
+  void init(String id, String name) {
     reciterId = id;
+    reciterName = name;
     fetchSuras(reciterId: id);
   }
 
@@ -65,16 +75,15 @@ class ReciterDetailController extends GetxController {
     fetchSuras(reciterId: reciterId, search: value);
   }
 
-  // ✅ Inline play/pause
   Future<void> togglePlay(int index, String audioUrl) async {
-    if (playingIndex.value == index) {
+    if (playingIndex.value == index &&
+        GlobalAudioManager.to.activeControllerId == _controllerId) {
       await _audioPlayer.pause();
       playingIndex.value = null;
-      AudioSessionManager.unregister(); // ✅
+      GlobalAudioManager.to.unregister(_controllerId);
     } else {
-      // ✅ আগের audio বন্ধ করো
-      AudioSessionManager.register(() {
-        _audioPlayer.pause();
+      // ✅ register করলে আগের যেকোনো controller (Favorites বা Player) বন্ধ হবে
+      GlobalAudioManager.to.register(_controllerId, () {
         playingIndex.value = null;
       });
 
@@ -82,14 +91,44 @@ class ReciterDetailController extends GetxController {
       try {
         await _audioPlayer.setUrl(audioUrl);
         await _audioPlayer.play();
+
+        // ✅ SharedAudioState update
+        final sura = filteredSuras[index];
+        SharedAudioState.to.updateLastPlayed(
+          surahName: '${sura.suraNumber}. ${sura.title}',
+          reciterName: reciterName,
+          audioUrl: audioUrl,
+        );
       } catch (e) {
-        print('❌ Audio Error: $e');
         playingIndex.value = null;
       }
     }
   }
 
-  bool isPlaying(int index) => playingIndex.value == index;
+  bool isPlaying(int index) =>
+      playingIndex.value == index &&
+          GlobalAudioManager.to.activeControllerId == _controllerId;
+
+  /// PlayerScreen-এ যাওয়ার আগে position নাও এবং pause করো
+  Duration stopAndGetPosition(int index) {
+    final isThisControllerActive =
+        GlobalAudioManager.to.activeControllerId == _controllerId;
+    final pos = (isThisControllerActive && isPlaying(index))
+        ? _audioPlayer.position
+        : Duration.zero;
+
+    _audioPlayer.pause();
+    GlobalAudioManager.to.unregister(_controllerId);
+    playingIndex.value = null;
+
+    return pos;
+  }
+
+  void stopAndClear() {
+    _audioPlayer.pause();
+    GlobalAudioManager.to.unregister(_controllerId);
+    playingIndex.value = null;
+  }
 
   // ✅ Download
   Future<void> downloadAudio(String surahName, String audioUrl) async {
@@ -155,23 +194,10 @@ class ReciterDetailController extends GetxController {
     }
   }
 
-  Duration stopAndGetPosition(int index) {
-    final pos = isPlaying(index) ? _audioPlayer.position : Duration.zero;
-    _audioPlayer.pause();
-    playingIndex.value = null;
-    return pos;
-  }
-
-// পুরনো stopAndClear() রেখে দাও (অন্য জায়গায় use হতে পারে)
-  void stopAndClear() {
-    _audioPlayer.pause();
-    playingIndex.value = null;
-  }
-
   @override
   void onClose() {
-    // ✅ permanent: true হলে onClose call হবে না
-    _audioPlayer.dispose();
+    // ✅ dispose করবে না — GlobalAudioManager dispose করবে
+    GlobalAudioManager.to.unregister(_controllerId);
     super.onClose();
   }
 }

@@ -6,13 +6,15 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:urdu_quran/features/player/audio_session_manager.dart';
+import 'package:urdu_quran/features/player/global_audio_manager.dart';
+import 'package:urdu_quran/features/player/shared_audio_satatus.dart';
 import '../../favorite_model/favorite_repsitory.dart';
 import '../../favorite_model/favoritemodel.dart';
 import '../../player/player_screen.dart';
 
 class FavoritesController extends GetxController {
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  // ✅ GlobalAudioManager থেকে shared player নাও
+  AudioPlayer get _audioPlayer => GlobalAudioManager.to.player;
 
   var playingIndex = RxnInt();
   var favorites = <FavoriteModel>[].obs;
@@ -32,7 +34,10 @@ class FavoritesController extends GetxController {
 
     _audioPlayer.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
-        playingIndex.value = null;
+        // শুধু তখনই null করো যখন এই controller active
+        if (GlobalAudioManager.to.activeControllerId == 'favorites') {
+          playingIndex.value = null;
+        }
       }
     });
   }
@@ -75,11 +80,10 @@ class FavoritesController extends GetxController {
     if (playingIndex.value == index) {
       await _audioPlayer.pause();
       playingIndex.value = null;
-      AudioSessionManager.unregister(); // ✅
+      GlobalAudioManager.to.unregister('favorites');
     } else {
-      // ✅ আগের audio বন্ধ করো
-      AudioSessionManager.register(() {
-        _audioPlayer.pause();
+      // ✅ register করলে আগের যেকোনো controller (ReciterDetail বা Player) বন্ধ হবে
+      GlobalAudioManager.to.register('favorites', () {
         playingIndex.value = null;
       });
 
@@ -87,6 +91,14 @@ class FavoritesController extends GetxController {
       try {
         await _audioPlayer.setUrl(audioUrl);
         await _audioPlayer.play();
+
+        // ✅ SharedAudioState update
+        final fav = favorites[index];
+        SharedAudioState.to.updateLastPlayed(
+          surahName: '${fav.suraNumber}. ${fav.title}',
+          reciterName: fav.reciterName,
+          audioUrl: audioUrl,
+        );
       } catch (e) {
         print('❌ Audio Error: $e');
         playingIndex.value = null;
@@ -94,12 +106,19 @@ class FavoritesController extends GetxController {
     }
   }
 
-  bool isPlaying(int index) => playingIndex.value == index;
+  bool isPlaying(int index) =>
+      playingIndex.value == index &&
+          GlobalAudioManager.to.activeControllerId == 'favorites';
 
   void playFavorite(FavoriteModel favorite) {
-    // ✅ position নাও
-    final pos = _audioPlayer.position;
+    // ✅ position নাও — শুধু যদি এই controller-ই active থাকে
+    final pos = (GlobalAudioManager.to.activeControllerId == 'favorites')
+        ? _audioPlayer.position
+        : Duration.zero;
+
+    // ✅ pause করো এবং unregister করো
     _audioPlayer.pause();
+    GlobalAudioManager.to.unregister('favorites');
     playingIndex.value = null;
 
     Get.to(() => PlayerScreen(
@@ -107,7 +126,7 @@ class FavoritesController extends GetxController {
       reciterName: favorite.reciterName,
       audioUrl: favorite.audioUrl,
       suraId: favorite.id,
-      initialPosition: pos, // ✅
+      initialPosition: pos,
     ))?.then((_) {
       fetchFavorites();
     });
@@ -179,7 +198,8 @@ class FavoritesController extends GetxController {
 
   @override
   void onClose() {
-    _audioPlayer.dispose();
+    // ✅ dispose করবে না — GlobalAudioManager dispose করবে
+    GlobalAudioManager.to.unregister('favorites');
     super.onClose();
   }
 }

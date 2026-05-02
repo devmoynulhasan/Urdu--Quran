@@ -7,13 +7,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:urdu_quran/features/player/audio_session_manager.dart';
+import 'package:urdu_quran/features/player/global_audio_manager.dart';
 import '../../../core/local_storage.dart';
 import '../../favorite_model/favorite_repsitory.dart';
 import '../favorites_controller/favorites_controller.dart';
 
 class PlayerController extends GetxController {
-  final AudioPlayer player = AudioPlayer();
+  // ✅ GlobalAudioManager থেকে shared player নাও
+  AudioPlayer get player => GlobalAudioManager.to.player;
 
   var isPlaying = false.obs;
   var duration = Duration.zero.obs;
@@ -44,7 +45,7 @@ class PlayerController extends GetxController {
   final List<String> speeds = ['x 0.7', 'Normal', 'x 1.5', 'x 2'];
   final List<String> timerOptions = [
     'Never',
-    '1 Minutes'
+    '1 Minutes',
     '5 Minutes',
     '10 Minutes',
     '15 Minutes',
@@ -69,8 +70,8 @@ class PlayerController extends GetxController {
       isLoading.value = true;
       currentSuraId = suraId;
 
-      AudioSessionManager.register(() {
-        player.pause();
+      // ✅ register করলে আগের যেকোনো controller (Favorites বা ReciterDetail) বন্ধ হবে
+      GlobalAudioManager.to.register('player', () {
         isPlaying.value = false;
       });
 
@@ -82,12 +83,16 @@ class PlayerController extends GetxController {
       }
 
       player.positionStream.listen((pos) => position.value = pos);
-      player.durationStream.listen((dur) => duration.value = dur ?? Duration.zero);
+      player.durationStream
+          .listen((dur) => duration.value = dur ?? Duration.zero);
       player.playingStream.listen((playing) => isPlaying.value = playing);
 
-      // ✅ এটা যোগ করো — audio শেষ হলে button off হবে
+      // ✅ audio শেষ হলে repeat বা reset
       player.playerStateStream.listen((state) {
         if (state.processingState == ProcessingState.completed) {
+          // শুধু তখনই handle করো যখন player controller active
+          if (GlobalAudioManager.to.activeControllerId != 'player') return;
+
           if (isRepeat.value) {
             player.seek(Duration.zero);
             player.play();
@@ -288,7 +293,6 @@ class PlayerController extends GetxController {
 
   // ✅ Active Timer with countdown
   void setTimer(String timer) {
-    // Cancel any existing timer
     _sleepTimer?.cancel();
     _sleepTimer = null;
     selectedTimer.value = timer;
@@ -296,13 +300,11 @@ class PlayerController extends GetxController {
 
     if (timer == 'Never') return;
 
-    // Extract minutes from option string e.g. "5 Minutes" → 5
     final minutes = int.tryParse(timer.split(' ')[0]) ?? 0;
     if (minutes <= 0) return;
 
     remainingSeconds.value = minutes * 60;
 
-    // Countdown every second
     _sleepTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (remainingSeconds.value <= 1) {
         player.pause();
@@ -333,8 +335,9 @@ class PlayerController extends GetxController {
 
   @override
   void onClose() {
-    _sleepTimer?.cancel(); // ✅ Timer cancel on close
-    player.dispose();
+    _sleepTimer?.cancel();
+    // ✅ dispose করবে না — GlobalAudioManager dispose করবে
+    GlobalAudioManager.to.unregister('player');
     super.onClose();
   }
 }
