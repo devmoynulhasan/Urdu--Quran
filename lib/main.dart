@@ -4,10 +4,9 @@ import 'package:get_storage/get_storage.dart';
 import 'package:urdu_quran/core/device_id.dart';
 
 import 'features/player/global_audio_manager.dart';
+import 'features/player/mini_player_widget.dart';
 import 'features/player/shared_audio_satatus.dart';
 import 'features/splash/splashscreen.dart';
-
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +33,21 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const Splashscreen(),
+
+      // ✅ সব screen এ mini player দেখাবে
+      builder: (context, child) {
+        return Stack(
+          children: [
+            child!,
+            Positioned(
+              bottom: 100,
+              left: 0,
+              right: 0,
+              child: const MiniPlayerWidget(),
+            ),
+          ],
+        );
+      },
     );
   }
 }

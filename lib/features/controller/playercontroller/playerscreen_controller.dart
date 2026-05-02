@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:urdu_quran/features/player/global_audio_manager.dart';
+import 'package:urdu_quran/features/player/shared_audio_satatus.dart';
 import '../../../core/local_storage.dart';
 import '../../favorite_model/favorite_repsitory.dart';
 import '../favorites_controller/favorites_controller.dart';
@@ -77,6 +78,11 @@ class PlayerController extends GetxController {
 
       await player.setUrl(audioUrl);
       await LocalStorage.saveLastPlayed(surahName, reciterName, audioUrl);
+      SharedAudioState.to.updateLastPlayed(
+        surahName: surahName,
+        reciterName: reciterName,
+        audioUrl: audioUrl,
+      );
 
       if (initialPosition > Duration.zero) {
         await player.seek(initialPosition);

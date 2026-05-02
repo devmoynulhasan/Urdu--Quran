@@ -16,4 +16,11 @@ class SharedAudioState extends GetxService {
     lastPlayedReciter.value = reciterName;
     lastPlayedAudioUrl.value = audioUrl;
   }
+
+  // ✅ এটা যোগ করো
+  void clear() {
+    lastPlayedSurah.value = '';
+    lastPlayedReciter.value = '';
+    lastPlayedAudioUrl.value = '';
+  }
 }
