@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:urdu_quran/features/player/audio_session_manager.dart';
+import 'package:urdu_quran/features/player/global_audio_manager.dart';
 import '../../../core/local_storage.dart';
 import '../../player/player_screen.dart';
 import '../../reciter_model/reciter_model.dart';
@@ -78,47 +78,69 @@ class HomeController extends GetxController {
   void selectReciter(int index) => selectedReciterIndex.value = index;
   void changeNavIndex(int index) => selectedNavIndex.value = index;
 
-  void playLastPlayed() async {
-    if (lastPlayedSurah.value.isNotEmpty) {
-      await Get.to(() => PlayerScreen(
-        surahName: lastPlayedSurah.value,
-        reciterName: lastPlayedReciter.value,
-        audioUrl: lastPlayedAudioUrl.value,
-      ));
-      reloadLastPlayed();
-    }
-  }
-
   // ✅ Inline play/pause
   Future<void> toggleLastPlayed() async {
     if (lastPlayedAudioUrl.value.isEmpty) return;
 
-    if (_audioPlayer != null && isLastPlayedPlaying.value) {
-      await _audioPlayer!.pause();
+    // ✅ GlobalAudioManager থেকে shared player নাও
+    final audioPlayer = GlobalAudioManager.to.player;
+
+    if (isLastPlayedPlaying.value &&
+        GlobalAudioManager.to.activeControllerId == 'home') {
+      await audioPlayer.pause();
       isLastPlayedPlaying.value = false;
+      GlobalAudioManager.to.unregister('home');
       return;
     }
 
-    // ✅ আগের audio বন্ধ করো
-    AudioSessionManager.register(() {
-      _audioPlayer?.pause();
+    // ✅ register করলে আগের যেকোনো controller বন্ধ হবে
+    GlobalAudioManager.to.register('home', () {
       isLastPlayedPlaying.value = false;
     });
 
     try {
-      _audioPlayer ??= AudioPlayer();
-      await _audioPlayer!.setUrl(lastPlayedAudioUrl.value);
-      await _audioPlayer!.play();
+      await audioPlayer.setUrl(lastPlayedAudioUrl.value);
+      await audioPlayer.play();
       isLastPlayedPlaying.value = true;
 
-      _audioPlayer!.playerStateStream.listen((state) {
+      audioPlayer.playerStateStream.listen((state) {
         if (state.processingState == ProcessingState.completed) {
-          isLastPlayedPlaying.value = false;
+          if (GlobalAudioManager.to.activeControllerId == 'home') {
+            isLastPlayedPlaying.value = false;
+            GlobalAudioManager.to.unregister('home');
+          }
         }
       });
     } catch (e) {
       print('❌ Audio Error: $e');
       isLastPlayedPlaying.value = false;
+      GlobalAudioManager.to.unregister('home');
+    }
+  }
+
+  void playLastPlayed() async {
+    if (lastPlayedSurah.value.isNotEmpty) {
+
+      // ✅ home audio চলছে কিনা — position নাও
+      final pos = (isLastPlayedPlaying.value &&
+          GlobalAudioManager.to.activeControllerId == 'home')
+          ? GlobalAudioManager.to.player.position
+          : Duration.zero;
+
+      // ✅ home audio আগে বন্ধ করো, তারপর PlayerScreen এ যাও
+      if (isLastPlayedPlaying.value) {
+        GlobalAudioManager.to.player.pause();
+        GlobalAudioManager.to.unregister('home');
+        isLastPlayedPlaying.value = false;
+      }
+
+      await Get.to(() => PlayerScreen(
+        surahName: lastPlayedSurah.value,
+        reciterName: lastPlayedReciter.value,
+        audioUrl: lastPlayedAudioUrl.value,
+        initialPosition: pos, // ✅ যেখানে ছিল সেখান থেকে শুরু হবে
+      ));
+      reloadLastPlayed();
     }
   }
 
@@ -190,6 +212,7 @@ class HomeController extends GetxController {
 
   @override
   void onClose() {
+    GlobalAudioManager.to.unregister('home');
     _audioPlayer?.dispose();
     super.onClose();
   }
