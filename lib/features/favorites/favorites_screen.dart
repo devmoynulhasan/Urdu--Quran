@@ -137,7 +137,6 @@ class FavoritesScreen extends StatelessWidget {
             ),
 
             // ✅ Download icon
-            // ✅ Download icon
             GestureDetector(
               onTap: () => controller.downloadAudio(
                 '${favorite.suraNumber}_${favorite.title}',
@@ -176,11 +175,15 @@ class FavoritesScreen extends StatelessWidget {
             ),
             const SizedBox(width: 15),
 
-            // ✅ Play icon
+            // ✅ Play icon / AnimatedWaveform — SizedBox fixed করা তাই card shake করবে না
             GestureDetector(
               onTap: () => controller.togglePlay(index, favorite.audioUrl),
               child: isPlaying
-                  ? const AnimatedWaveform()
+                  ? const SizedBox(
+                width: 44,
+                height: 44,
+                child: AnimatedWaveform(),
+              )
                   : Container(
                 padding: const EdgeInsets.all(10),
                 decoration: const BoxDecoration(
@@ -252,8 +255,6 @@ class GeometricPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
-
 
 class AnimatedWaveform extends StatefulWidget {
   const AnimatedWaveform({super.key});

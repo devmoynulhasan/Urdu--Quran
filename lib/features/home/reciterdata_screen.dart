@@ -244,11 +244,15 @@ class _ReciterDetailScreenState extends State<ReciterDetailScreen> {
                             ),
                             const SizedBox(width: 14),
 
-                            // ✅ Play / Waveform
+                            // ✅ Play / AnimatedWaveform — SizedBox fixed করা তাই card shake করবে না
                             GestureDetector(
                               onTap: () => controller.togglePlay(index, sura.audioUrl),
                               child: isPlaying
-                                  ? const AnimatedWaveform()
+                                  ? const SizedBox(
+                                width: 46,
+                                height: 46,
+                                child: AnimatedWaveform(),
+                              )
                                   : Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: const BoxDecoration(
