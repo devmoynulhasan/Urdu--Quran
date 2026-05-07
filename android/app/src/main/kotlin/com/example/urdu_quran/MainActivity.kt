@@ -1,4 +1,4 @@
-package com.example.urdu_quran
+package com.sparktech.urduquran
 
 import io.flutter.embedding.android.FlutterActivity
 
